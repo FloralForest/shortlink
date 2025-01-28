@@ -20,6 +20,8 @@ import lombok.experimental.Accessors;
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)
+//@TableName注解对应其里面的表，但因为ShardingSphere框架的原因这里的"t_user"为逻辑表数据库中不存在
+//做了数据库分表处理，操作时ShardingSphere框架会根据逻辑表去查询数据库的真实表
 @TableName("t_user")
 public class TUser implements Serializable {
 
