@@ -2,6 +2,8 @@ package com.project.shortlink.admin.dto.resp;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.project.shortlink.admin.common.serialize.PhoneDesensitizationSerializer;
 import lombok.Data;
 
 /**
@@ -27,8 +29,9 @@ public class UserRespDTO {
     private String realName;
 
     /**
-     * 手机号
+     * 手机号 JsonSerialize注解 序列化脱敏 “13***15”
      */
+    @JsonSerialize(using = PhoneDesensitizationSerializer.class)
     private String phone;
 
     /**

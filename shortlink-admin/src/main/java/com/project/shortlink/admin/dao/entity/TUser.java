@@ -1,12 +1,10 @@
 package com.project.shortlink.admin.dao.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.*;
 
 import java.time.LocalDateTime;
 import java.io.Serializable;
 
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
@@ -66,17 +64,23 @@ public class TUser implements Serializable {
     /**
      * 创建时间
      */
+    //标记 配合com.project.shortlink.admin.config;
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
     /**
      * 修改时间
      */
+    //标记 配合com.project.shortlink.admin.config;
+    @TableField(fill =FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
     /**
      * 逻辑删除0:未删 1:已删
      */
-    private Boolean delFlag;
+    //标记 配合com.project.shortlink.admin.config;
+    @TableField(fill = FieldFill.INSERT)
+    private Integer delFlag;
 
 
 }
