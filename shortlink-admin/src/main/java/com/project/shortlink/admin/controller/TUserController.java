@@ -49,7 +49,7 @@ public class TUserController {
                 .setMessage("查询成功！");
     }
 
-    //查询用户名是否存在
+    //查询用户名是否可用
     @GetMapping("user/isUsername")
     //@RequestParam 从URL的查询字符串（如 ?name=John&age=20）或 POST 表单数据中获取参数值。
     public Result<Boolean> ifUsername(@RequestParam("username") String username) {

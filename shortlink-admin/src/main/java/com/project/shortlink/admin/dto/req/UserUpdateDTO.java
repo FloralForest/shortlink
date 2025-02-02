@@ -3,7 +3,7 @@ package com.project.shortlink.admin.dto.req;
 import lombok.Data;
 
 /**
- * 用户注册请求参数
+ * 用户修改请求参数
  */
 @Data
 public class UserUpdateDTO {

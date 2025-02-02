@@ -123,7 +123,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser> implements
         final LambdaQueryWrapper<TUser> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         //根据对象查询到对应用户
         lambdaQueryWrapper.eq(TUser::getUsername, userUpdateDTO.getUsername());
-        //将修改对象转为 TUser实体，然后修改查询到的TUser
+        //将修改对象转为 TUser实体，然后修改lambdaQueryWrapper查询到的TUser
         baseMapper.update(BeanUtil.toBean(userUpdateDTO, TUser.class), lambdaQueryWrapper);
     }
 

@@ -12,6 +12,7 @@ import org.apache.ibatis.annotations.Mapper;
  * @author project
  * @since 2025-01-26
  */
+@Mapper
 public interface TUserMapper extends BaseMapper<TUser> {
 
 }
