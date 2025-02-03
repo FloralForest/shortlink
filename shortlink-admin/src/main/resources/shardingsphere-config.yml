@@ -17,7 +17,8 @@ rules:
         tableStrategy:
           # 用于单分片键的标准分片场景
           standard:
-            # 分片键
+            # 分片键是用于将数据分散到不同物理表的关键字段。
+            # 分片键 username 是逻辑表 t_user 的分片键，所有数据会根据 username 的值计算路由到对应的分片表。
             shardingColumn: username
             # 分片算法，对应 rules[0].shardingAlgorithms
             shardingAlgorithmName: user_table_hash_mod
