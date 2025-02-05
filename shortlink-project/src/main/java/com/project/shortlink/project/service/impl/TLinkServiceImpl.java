@@ -119,7 +119,9 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         final LambdaQueryWrapper<TLink> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper.eq(TLink::getGid, linkPageDTO.getGid())
                 .eq(TLink::getEnableStatus, 0)
-                .eq(TLink::getDelFlag, 0);
+                .eq(TLink::getDelFlag, 0)
+                //默认根据创建时间排序
+                .orderByDesc(TLink::getCreateTime);
         IPage<TLink> resultPage = baseMapper.selectPage(linkPageDTO, lambdaQueryWrapper);
 
         return resultPage.convert(page -> BeanUtil.toBean(page, LinkPageRespDTO.class));
