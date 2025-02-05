@@ -5,8 +5,11 @@ import com.project.shortlink.project.dao.entity.TLink;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
 import com.project.shortlink.project.dto.req.LinkPageDTO;
+import com.project.shortlink.project.dto.resp.LinkCountRespDTO;
 import com.project.shortlink.project.dto.resp.LinkCreateRespDTO;
 import com.project.shortlink.project.dto.resp.LinkPageRespDTO;
+
+import java.util.List;
 
 /**
  * <p>
@@ -27,4 +30,9 @@ public interface TLinkService extends IService<TLink> {
      * 分页查询
      */
     IPage<LinkPageRespDTO> pageLink(LinkPageDTO linkPageDTO);
+
+    /**
+     * 分组下的短链接数量
+     */
+    List<LinkCountRespDTO> listLinkCount(List<String> listLink);
 }

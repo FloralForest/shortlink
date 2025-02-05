@@ -12,6 +12,7 @@ import com.project.shortlink.admin.dto.req.UserRegisterDTO;
 import com.project.shortlink.admin.dto.req.UserUpdateDTO;
 import com.project.shortlink.admin.dto.resp.UserLoginRespDTO;
 import com.project.shortlink.admin.dto.resp.UserRespDTO;
+import com.project.shortlink.admin.service.TGroupService;
 import com.project.shortlink.admin.service.TUserService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +50,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser> implements
     private final RedissonClient redissonClient;
     //redis 依赖
     private final StringRedisTemplate stringRedisTemplate;
+    private final TGroupService tGroupService;
 
     /**
      * 根据用户名返回信息
@@ -105,6 +107,8 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser> implements
                 baseMapper.insert(BeanUtil.toBean(userRegisterDTO, TUser.class));
                 // 更新布隆过滤器
                 userRegisterCachePenetrationBloomFilter.add(userRegisterDTO.getUsername());
+                //创建用户后默认添加短链接分组
+                tGroupService.saveGroup("新建分组", userRegisterDTO.getUsername());
             }
         } catch (DuplicateKeyException e) {
             // 捕获唯一键冲突异常（兜底）

@@ -19,9 +19,13 @@ import java.util.List;
  */
 public interface TGroupService extends IService<TGroup> {
     /**
-     * 新曾短链接分组
+     * 新曾短链接分组 可变参数 最后的值可带可不带，增加灵活性
      */
-    void saveGroup(String groupName);
+    void saveGroup(String groupName, String... username);
+//    /**
+//     * 新曾短链接分组 带用户名参数
+//     */
+//    void saveGroup(String username,String groupName);
 
     /**
      * 查询分组

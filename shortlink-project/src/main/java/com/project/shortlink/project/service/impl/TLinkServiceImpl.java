@@ -2,12 +2,14 @@ package com.project.shortlink.project.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.project.shortlink.project.common.convention.exception.ServiceException;
 import com.project.shortlink.project.dao.entity.TLink;
 import com.project.shortlink.project.dao.mapper.TLinkMapper;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
 import com.project.shortlink.project.dto.req.LinkPageDTO;
+import com.project.shortlink.project.dto.resp.LinkCountRespDTO;
 import com.project.shortlink.project.dto.resp.LinkCreateRespDTO;
 import com.project.shortlink.project.dto.resp.LinkPageRespDTO;
 import com.project.shortlink.project.service.TLinkService;
@@ -18,6 +20,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBloomFilter;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * <p>
@@ -125,5 +130,20 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         IPage<TLink> resultPage = baseMapper.selectPage(linkPageDTO, lambdaQueryWrapper);
 
         return resultPage.convert(page -> BeanUtil.toBean(page, LinkPageRespDTO.class));
+    }
+
+    //分组下的短链接数量
+    @Override
+    public List<LinkCountRespDTO> listLinkCount(List<String> gidNumber) {
+        final QueryWrapper<TLink> wrapper = new QueryWrapper<>();
+        wrapper.select("gid as gid, count(*) as linkCount")
+                .lambda()
+                .in(TLink::getGid, gidNumber)
+                .eq(TLink::getEnableStatus, 0)
+                .groupBy(TLink::getGid);
+
+        final List<Map<String, Object>> list = baseMapper.selectMaps(wrapper);
+
+        return BeanUtil.copyToList(list, LinkCountRespDTO.class);
     }
 }
