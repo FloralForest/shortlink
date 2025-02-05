@@ -2,11 +2,14 @@ package com.project.shortlink.project.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.project.shortlink.project.common.convention.exception.ServiceException;
 import com.project.shortlink.project.dao.entity.TLink;
 import com.project.shortlink.project.dao.mapper.TLinkMapper;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
+import com.project.shortlink.project.dto.req.LinkPageDTO;
 import com.project.shortlink.project.dto.resp.LinkCreateRespDTO;
+import com.project.shortlink.project.dto.resp.LinkPageRespDTO;
 import com.project.shortlink.project.service.TLinkService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.project.shortlink.project.util.HashUtil;
@@ -108,5 +111,17 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
 
         //返回生成的链接
         return shorUri;
+    }
+
+    //分页查询 配合DataBaseConfiguration工具类分页插件
+    @Override
+    public IPage<LinkPageRespDTO> pageLink(LinkPageDTO linkPageDTO) {
+        final LambdaQueryWrapper<TLink> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper.eq(TLink::getGid, linkPageDTO.getGid())
+                .eq(TLink::getEnableStatus, 0)
+                .eq(TLink::getDelFlag, 0);
+        IPage<TLink> resultPage = baseMapper.selectPage(linkPageDTO, lambdaQueryWrapper);
+
+        return resultPage.convert(page -> BeanUtil.toBean(page, LinkPageRespDTO.class));
     }
 }

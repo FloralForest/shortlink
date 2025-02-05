@@ -78,6 +78,12 @@ public class TLink extends BaseDO implements Serializable {
     private String gid;
 
     /**
+     * 网站图片
+     */
+    @TableField("favicon")
+    private String favicon;
+
+    /**
      * 启用标识 （0：启用）（1：未启用）
      */
     @TableField("enable_status")
