@@ -6,7 +6,8 @@ spring:
     # ShardingSphere 对 Driver 自定义，实现分库分表等隐藏逻辑
     driver-class-name: org.apache.shardingsphere.driver.ShardingSphereDriver
     # ShardingSphere 配置文件路径
-    url: jdbc:shardingsphere:classpath:shardingsphere-config.yml
+    #${database.env:dev} 没有参数（如java -jar -Ddatabse.env=prod）时默认访问dev
+    url: jdbc:shardingsphere:classpath:shardingsphere-config-${database.env:dev}.yml
 #  #数据库配置
 #  datasource:
 #    username: root
