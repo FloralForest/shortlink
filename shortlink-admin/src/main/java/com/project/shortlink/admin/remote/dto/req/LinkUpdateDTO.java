@@ -1,26 +1,16 @@
-package com.project.shortlink.project.dto.req;
+package com.project.shortlink.admin.remote.dto.req;
 
-import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.fasterxml.jackson.annotation.JsonFormat;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
- * 短链接请求参数
+ * 短链接修改请求实体
  */
 @Data
-//可以自动生成一个建造者模式相关的代码 使用生成的建造者模式来创建对象
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class LinkCreateDTO {
-
+public class LinkUpdateDTO {
     /**
      * 域名
      */
@@ -34,16 +24,16 @@ public class LinkCreateDTO {
     private String originUrl;
 
     /**
+     * 完整短链接
+     */
+    @TableField("full_short_url")
+    private String fullShortUrl;
+
+    /**
      * 分组标识
      */
     @TableField("gid")
     private String gid;
-
-    /**
-     * 创建类型 0：控制台 1：接口
-     */
-    @TableField("created_type")
-    private Integer createdType;
 
     /**
      * 有效期类型 0：永久有效 1：用户自定义

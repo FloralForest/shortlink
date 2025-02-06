@@ -1,6 +1,7 @@
 package com.project.shortlink.admin.remote.dto.req;
 
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -50,8 +51,10 @@ public class LinkCreateDTO {
 
     /**
      * 有效期
+     * json序列化工具
      */
     @TableField("valid_date")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime validDate;
 
     /**

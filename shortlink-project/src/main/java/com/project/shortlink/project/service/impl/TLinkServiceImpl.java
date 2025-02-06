@@ -3,12 +3,16 @@ package com.project.shortlink.project.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.project.shortlink.project.common.convention.exception.ClientException;
 import com.project.shortlink.project.common.convention.exception.ServiceException;
+import com.project.shortlink.project.common.enums.VailDateTypeEnum;
 import com.project.shortlink.project.dao.entity.TLink;
 import com.project.shortlink.project.dao.mapper.TLinkMapper;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
 import com.project.shortlink.project.dto.req.LinkPageDTO;
+import com.project.shortlink.project.dto.req.LinkUpdateDTO;
 import com.project.shortlink.project.dto.resp.LinkCountRespDTO;
 import com.project.shortlink.project.dto.resp.LinkCreateRespDTO;
 import com.project.shortlink.project.dto.resp.LinkPageRespDTO;
@@ -20,9 +24,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBloomFilter;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * <p>
@@ -65,7 +71,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         try {
             //如果数据库添加失败，抛出异常
             baseMapper.insert(tLink);
-        }catch (DuplicateKeyException e){
+        } catch (DuplicateKeyException e) {
             //进一步查询数据库判断是否真的存在
             final LambdaQueryWrapper<TLink> lambdaQueryWrapper = new LambdaQueryWrapper<>();
             lambdaQueryWrapper.eq(TLink::getFullShortUrl, fullShorUrl);
@@ -145,5 +151,57 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         final List<Map<String, Object>> list = baseMapper.selectMaps(wrapper);
 
         return BeanUtil.copyToList(list, LinkCountRespDTO.class);
+    }
+
+    //修改短链接
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public void linkUpdate(LinkUpdateDTO linkUpdateDTO) {
+        //短链分组问题
+        final LambdaQueryWrapper<TLink> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper
+                .eq(TLink::getGid, linkUpdateDTO.getGid())
+                .eq(TLink::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
+                .eq(TLink::getDelFlag, 0)
+                .eq(TLink::getEnableStatus, 0);
+        final TLink selectOne = baseMapper.selectOne(lambdaQueryWrapper);
+        if (selectOne == null) {
+            throw new ClientException("短链接不存在");
+        }
+        final TLink tLink = TLink
+                .builder()
+                .domain(selectOne.getDomain())
+                .shortUri(selectOne.getShortUri())
+                .clickNum(selectOne.getClickNum())
+                .favicon(selectOne.getFavicon())
+                .createdType(selectOne.getCreatedType())
+                .gid(linkUpdateDTO.getGid())
+                .originUrl(linkUpdateDTO.getOriginUrl())
+                .describe(linkUpdateDTO.getDescribe())
+                .validDateType(linkUpdateDTO.getValidDateType())
+                .validDate(linkUpdateDTO.getValidDate())
+                .build();
+        if (Objects.equals(selectOne.getGid(), linkUpdateDTO.getGid(    ))) {
+            //短链信息修改
+            LambdaUpdateWrapper<TLink> lambdaUpdateWrapper = new LambdaUpdateWrapper<>();
+            lambdaUpdateWrapper
+                    .eq(TLink::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
+                    .eq(TLink::getGid, linkUpdateDTO.getGid())
+                    .eq(TLink::getEnableStatus, 0)
+                    .eq(TLink::getDelFlag, 0)
+                    .set(Objects.equals(linkUpdateDTO.getValidDateType(), VailDateTypeEnum.PERMANENT.getType()),
+                            TLink::getValidDate, null);
+            //修改根据lambdaUpdateWrapper条件查询到的数据
+            baseMapper.update(tLink, lambdaUpdateWrapper);
+        } else {
+            LambdaUpdateWrapper<TLink> lambdaWrapper = new LambdaUpdateWrapper<>();
+            lambdaWrapper
+                    .eq(TLink::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
+                    .eq(TLink::getGid, selectOne.getGid())
+                    .eq(TLink::getEnableStatus, 0)
+                    .eq(TLink::getDelFlag, 0);
+            baseMapper.delete(lambdaWrapper);
+            baseMapper.insert(tLink);
+        }
     }
 }

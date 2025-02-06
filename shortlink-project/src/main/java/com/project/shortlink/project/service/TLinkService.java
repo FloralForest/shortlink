@@ -5,6 +5,7 @@ import com.project.shortlink.project.dao.entity.TLink;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
 import com.project.shortlink.project.dto.req.LinkPageDTO;
+import com.project.shortlink.project.dto.req.LinkUpdateDTO;
 import com.project.shortlink.project.dto.resp.LinkCountRespDTO;
 import com.project.shortlink.project.dto.resp.LinkCreateRespDTO;
 import com.project.shortlink.project.dto.resp.LinkPageRespDTO;
@@ -35,4 +36,9 @@ public interface TLinkService extends IService<TLink> {
      * 分组下的短链接数量
      */
     List<LinkCountRespDTO> listLinkCount(List<String> listLink);
+
+    /**
+     * 短链接修改
+     */
+    void linkUpdate(LinkUpdateDTO linkUpdateDTO);
 }
