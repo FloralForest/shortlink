@@ -9,6 +9,10 @@ import com.project.shortlink.project.dto.req.LinkUpdateDTO;
 import com.project.shortlink.project.dto.resp.LinkCountRespDTO;
 import com.project.shortlink.project.dto.resp.LinkCreateRespDTO;
 import com.project.shortlink.project.dto.resp.LinkPageRespDTO;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.List;
 
@@ -41,4 +45,9 @@ public interface TLinkService extends IService<TLink> {
      * 短链接修改
      */
     void linkUpdate(LinkUpdateDTO linkUpdateDTO);
+
+    /**
+     * 实现短链接跳转(重定向到原链接)
+     */
+    void linkUri(String linkUri,  ServletRequest request, ServletResponse response);
 }

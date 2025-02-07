@@ -10,6 +10,8 @@ import com.project.shortlink.project.dto.resp.LinkCountRespDTO;
 import com.project.shortlink.project.dto.resp.LinkCreateRespDTO;
 import com.project.shortlink.project.dto.resp.LinkPageRespDTO;
 import com.project.shortlink.project.service.TLinkService;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -65,5 +67,15 @@ public class TLinkController {
         return Results.success()
                 .setCode("20000")
                 .setMessage("修改成功");
+    }
+
+    //实现短链接跳转(重定向到原链接)
+    @GetMapping("{linkUri}")
+    //@PathVariable 从URL获取值
+    public void linkUri(@PathVariable("linkUri") String linkUri,
+                        ServletRequest request,
+                        ServletResponse response){
+        //短链接 请求 响应
+        tLinkService.linkUri(linkUri, request, response);
     }
 }

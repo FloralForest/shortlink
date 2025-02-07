@@ -9,6 +9,8 @@ import com.project.shortlink.project.common.convention.exception.ClientException
 import com.project.shortlink.project.common.convention.exception.ServiceException;
 import com.project.shortlink.project.common.enums.VailDateTypeEnum;
 import com.project.shortlink.project.dao.entity.TLink;
+import com.project.shortlink.project.dao.entity.TLinkGoto;
+import com.project.shortlink.project.dao.mapper.TLinkGotoMapper;
 import com.project.shortlink.project.dao.mapper.TLinkMapper;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
 import com.project.shortlink.project.dto.req.LinkPageDTO;
@@ -19,7 +21,11 @@ import com.project.shortlink.project.dto.resp.LinkPageRespDTO;
 import com.project.shortlink.project.service.TLinkService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.project.shortlink.project.util.HashUtil;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBloomFilter;
 import org.springframework.dao.DuplicateKeyException;
@@ -45,6 +51,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
 
     //布隆过滤器
     private final RBloomFilter<String> shorUriCreateCachePenetrationBloomFilter;
+    private final TLinkGotoMapper tLinkGotoMapper;
 
     //创建短链接
     @Override
@@ -68,9 +75,18 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 //完整链接(域名+生成的短链接)
                 .fullShortUrl(fullShorUrl)
                 .build();
+
+        //添加关联表
+        final TLinkGoto tLinkGoto = TLinkGoto
+                .builder()
+                .fullShortUrl(fullShorUrl)
+                .gid(linkCreateDTO.getGid())
+                .build();
         try {
             //如果数据库添加失败，抛出异常
             baseMapper.insert(tLink);
+            //添加关联表
+            tLinkGotoMapper.insert(tLinkGoto);
         } catch (DuplicateKeyException e) {
             //进一步查询数据库判断是否真的存在
             final LambdaQueryWrapper<TLink> lambdaQueryWrapper = new LambdaQueryWrapper<>();
@@ -81,11 +97,11 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 throw new ServiceException("短链接重复");
             }
         }
-        //添加缓存
-        shorUriCreateCachePenetrationBloomFilter.add(suffix);
+        //添加缓存（一个短链接可配合多个域名，反之同理，所以这里需要添加拼接了域名的完整的短链接）
+        shorUriCreateCachePenetrationBloomFilter.add(fullShorUrl);
         return LinkCreateRespDTO
                 .builder()
-                .fullShortUrl(tLink.getFullShortUrl())
+                .fullShortUrl("http://" + tLink.getFullShortUrl())
                 .originUrl(linkCreateDTO.getOriginUrl())
                 .gid(linkCreateDTO.getGid())
                 .build();
@@ -105,6 +121,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             String originUrl = linkCreateDTO.getOriginUrl();
             //添加一个当前毫秒数，尽量降低冲突
             originUrl += System.currentTimeMillis();
+            //数据库保存的原链接是前端传的原链接，这里添加的毫秒数生成的短链接目的是为了降低冲突
+            //说白了数据库里只要有短链接去对应原链接就行了
             shorUri = HashUtil.hashToBase(originUrl);
 //            //查询是否有生成的短链
 //            final LambdaQueryWrapper<TLink> lambdaQueryWrapper = new LambdaQueryWrapper<>();
@@ -135,7 +153,11 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 .orderByDesc(TLink::getCreateTime);
         IPage<TLink> resultPage = baseMapper.selectPage(linkPageDTO, lambdaQueryWrapper);
 
-        return resultPage.convert(page -> BeanUtil.toBean(page, LinkPageRespDTO.class));
+        return resultPage.convert(page ->{
+            final LinkPageRespDTO result = BeanUtil.toBean(page, LinkPageRespDTO.class);
+            result.setDomain("http://" + result.getDomain());
+            return result;
+        });
     }
 
     //分组下的短链接数量
@@ -181,7 +203,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 .validDateType(linkUpdateDTO.getValidDateType())
                 .validDate(linkUpdateDTO.getValidDate())
                 .build();
-        if (Objects.equals(selectOne.getGid(), linkUpdateDTO.getGid(    ))) {
+        if (Objects.equals(selectOne.getGid(), linkUpdateDTO.getGid())) {
             //短链信息修改
             LambdaUpdateWrapper<TLink> lambdaUpdateWrapper = new LambdaUpdateWrapper<>();
             lambdaUpdateWrapper
@@ -202,6 +224,36 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     .eq(TLink::getDelFlag, 0);
             baseMapper.delete(lambdaWrapper);
             baseMapper.insert(tLink);
+        }
+    }
+
+    //实现短链接跳转(重定向到原链接)
+    //因为实际情况用户只会传递短链（如baidu.com/linkUri），没有其它参数，因此需要关联表
+    //@SneakyThrows在方法体中自动捕获并处理异常，将异常转换为非受检异常（Unchecked Exception）并抛出。
+    @SneakyThrows
+    @Override
+    public void linkUri(String linkUri, ServletRequest request, ServletResponse response) {
+        //请求头中获取（服务器主机名或域名）
+        final String serverName = request.getServerName();
+        String fullShortUrl = serverName + "/" + linkUri;
+        //查找关联表中完整短链是否存在
+        final LambdaQueryWrapper<TLinkGoto> linkGotoWrapper = new LambdaQueryWrapper<>();
+        linkGotoWrapper.eq(TLinkGoto::getFullShortUrl, fullShortUrl);
+        final TLinkGoto tLinkGoto = tLinkGotoMapper.selectOne(linkGotoWrapper);
+        if (tLinkGoto == null){
+            return;
+        }
+        //若关联表完整短链存在，根据关联表的gid和完整短链查找短链表中的数据（主要获取原链接）
+        final LambdaQueryWrapper<TLink> tLinkWrapper = new LambdaQueryWrapper<>();
+        tLinkWrapper
+                .eq(TLink::getGid, tLinkGoto.getGid())
+                .eq(TLink::getFullShortUrl, fullShortUrl)
+                .eq(TLink::getDelFlag,0)
+                .eq(TLink::getEnableStatus, 0);
+        final TLink tLink = baseMapper.selectOne(tLinkWrapper);
+        if (tLink != null){
+            //跳转（重定向）
+            ((HttpServletResponse) response).sendRedirect(tLink.getOriginUrl());
         }
     }
 }
