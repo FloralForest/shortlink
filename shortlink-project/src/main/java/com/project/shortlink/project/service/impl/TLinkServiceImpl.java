@@ -1,6 +1,7 @@
 package com.project.shortlink.project.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -21,6 +22,7 @@ import com.project.shortlink.project.dto.resp.LinkPageRespDTO;
 import com.project.shortlink.project.service.TLinkService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.project.shortlink.project.util.HashUtil;
+import com.project.shortlink.project.util.LinkUtil;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,13 +30,22 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBloomFilter;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+
+import static com.project.shortlink.project.common.constant.RedisKeyConstant.*;
 
 /**
  * <p>
@@ -52,6 +63,9 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     //布隆过滤器
     private final RBloomFilter<String> shorUriCreateCachePenetrationBloomFilter;
     private final TLinkGotoMapper tLinkGotoMapper;
+    private final StringRedisTemplate stringRedisTemplate;
+    //锁
+    private final RedissonClient redissonClient;
 
     //创建短链接
     @Override
@@ -97,6 +111,11 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 throw new ServiceException("短链接重复");
             }
         }
+        //缓存预热(把必访问的资源添加到缓存)
+        stringRedisTemplate.opsForValue().set(
+                String.format(GOTO_SHORT_LINK_KEY, fullShorUrl),
+                linkCreateDTO.getOriginUrl(),
+                LinkUtil.getLinkCacheValidTime(linkCreateDTO.getValidDate()), TimeUnit.MILLISECONDS);
         //添加缓存（一个短链接可配合多个域名，反之同理，所以这里需要添加拼接了域名的完整的短链接）
         shorUriCreateCachePenetrationBloomFilter.add(fullShorUrl);
         return LinkCreateRespDTO
@@ -235,25 +254,81 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     public void linkUri(String linkUri, ServletRequest request, ServletResponse response) {
         //请求头中获取（服务器主机名或域名）
         final String serverName = request.getServerName();
+        //完整短链接
         String fullShortUrl = serverName + "/" + linkUri;
-        //查找关联表中完整短链是否存在
-        final LambdaQueryWrapper<TLinkGoto> linkGotoWrapper = new LambdaQueryWrapper<>();
-        linkGotoWrapper.eq(TLinkGoto::getFullShortUrl, fullShortUrl);
-        final TLinkGoto tLinkGoto = tLinkGotoMapper.selectOne(linkGotoWrapper);
-        if (tLinkGoto == null){
+        //查找redis缓存 根据前缀key和完整短链接查找原链接 (处理缓存击穿)
+        String originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
+        //使用字符串工具类判空
+        if (StrUtil.isNotBlank(originalLink)){
+            ((HttpServletResponse) response).sendRedirect(originalLink);
             return;
         }
-        //若关联表完整短链存在，根据关联表的gid和完整短链查找短链表中的数据（主要获取原链接）
-        final LambdaQueryWrapper<TLink> tLinkWrapper = new LambdaQueryWrapper<>();
-        tLinkWrapper
-                .eq(TLink::getGid, tLinkGoto.getGid())
-                .eq(TLink::getFullShortUrl, fullShortUrl)
-                .eq(TLink::getDelFlag,0)
-                .eq(TLink::getEnableStatus, 0);
-        final TLink tLink = baseMapper.selectOne(tLinkWrapper);
-        if (tLink != null){
-            //跳转（重定向）
-            ((HttpServletResponse) response).sendRedirect(tLink.getOriginUrl());
+        //处理缓存穿透(黑名单)
+        final boolean contains = shorUriCreateCachePenetrationBloomFilter.contains(fullShortUrl);
+        if (!contains){
+            return;
+        }
+        //处理缓存穿透(黑名单)
+        final String gotoIsNULL = stringRedisTemplate.opsForValue().get(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl));
+        if (StrUtil.isNotBlank(gotoIsNULL)){
+            return;
+        }
+        //redis 分布式锁
+        final RLock lock = redissonClient.getLock(String.format(LOCK_GOTO_SHORT_LINK_KEY, fullShortUrl));
+        lock.lock();
+        try {
+            //第一个线程拿到数据存入缓存后，后面就不必继续往下执行
+            originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
+            if (StrUtil.isBlank(originalLink)){
+                ((HttpServletResponse) response).sendRedirect(originalLink);
+                return;
+            }
+
+            //查找关联表中完整短链是否存在
+            final LambdaQueryWrapper<TLinkGoto> linkGotoWrapper = new LambdaQueryWrapper<>();
+            linkGotoWrapper.eq(TLinkGoto::getFullShortUrl, fullShortUrl);
+            final TLinkGoto tLinkGoto = tLinkGotoMapper.selectOne(linkGotoWrapper);
+            if (tLinkGoto == null) {
+                //处理缓存穿透(黑名单)
+                stringRedisTemplate.opsForValue().set(
+                        String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl),
+                        "-",
+                        30,
+                        TimeUnit.MINUTES);
+                return;
+            }
+            //若关联表完整短链存在，根据关联表的gid和完整短链查找短链表中的数据（主要获取原链接）
+            final LambdaQueryWrapper<TLink> tLinkWrapper = new LambdaQueryWrapper<>();
+            tLinkWrapper
+                    .eq(TLink::getGid, tLinkGoto.getGid())
+                    .eq(TLink::getFullShortUrl, fullShortUrl)
+                    .eq(TLink::getDelFlag, 0)
+                    .eq(TLink::getEnableStatus, 0);
+            final TLink tLink = baseMapper.selectOne(tLinkWrapper);
+            if (tLink != null) {
+                //短链接过期
+                if (tLink.getValidDate() != null
+                        && Date.from(tLink.getValidDate().atZone(ZoneId.systemDefault()).toInstant()).before(new Date())){
+                    //处理缓存穿透(黑名单)
+                    stringRedisTemplate.opsForValue().set(
+                            String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl),
+                            "-",
+                            30,
+                            TimeUnit.MINUTES);
+                    return;
+                }
+                //第一个线程拿到存入缓存
+                //key前缀(GOTO_SHORT_LINK_KEY)和完整短链接(fullShortUrl)组成的key+原链接(tLink.getShortUri())组成的value存入redis
+                //缓存预热(把必访问的资源添加到缓存)过期时间按
+                stringRedisTemplate.opsForValue().set(
+                        String.format(GOTO_SHORT_LINK_KEY, fullShortUrl),
+                        tLink.getOriginUrl(),
+                        LinkUtil.getLinkCacheValidTime(tLink.getValidDate()), TimeUnit.MILLISECONDS);
+                //跳转（重定向）
+                ((HttpServletResponse) response).sendRedirect(tLink.getOriginUrl());
+            }
+        }finally {
+            lock.unlock();
         }
     }
 }
