@@ -266,11 +266,13 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         //处理缓存穿透(黑名单)
         final boolean contains = shorUriCreateCachePenetrationBloomFilter.contains(fullShortUrl);
         if (!contains){
+            ((HttpServletResponse) response).sendRedirect("/link/notfound");
             return;
         }
         //处理缓存穿透(黑名单)
         final String gotoIsNULL = stringRedisTemplate.opsForValue().get(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl));
         if (StrUtil.isNotBlank(gotoIsNULL)){
+            ((HttpServletResponse) response).sendRedirect("/link/notfound");
             return;
         }
         //redis 分布式锁
@@ -295,6 +297,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                         "-",
                         30,
                         TimeUnit.MINUTES);
+                ((HttpServletResponse) response).sendRedirect("/link/notfound");
                 return;
             }
             //若关联表完整短链存在，根据关联表的gid和完整短链查找短链表中的数据（主要获取原链接）
@@ -315,6 +318,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                             "-",
                             30,
                             TimeUnit.MINUTES);
+                    ((HttpServletResponse) response).sendRedirect("/link/notfound");
                     return;
                 }
                 //第一个线程拿到存入缓存

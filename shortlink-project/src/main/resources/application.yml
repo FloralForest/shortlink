@@ -27,7 +27,11 @@ spring:
       host: 127.0.0.1
       port: 6379
 #      password: 123456
-
+  #thymeleaf配置
+  mvc:
+    view:
+      prefix: /templates/
+      suffix: .html
 ##mybatis日志
 #mybatis-plus:
 #  configuration:

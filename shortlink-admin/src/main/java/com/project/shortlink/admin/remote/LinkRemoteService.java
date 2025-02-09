@@ -11,6 +11,7 @@ import com.project.shortlink.admin.remote.dto.req.LinkPageDTO;
 import com.project.shortlink.admin.remote.dto.req.LinkUpdateDTO;
 import com.project.shortlink.admin.remote.dto.resp.LinkCreateRespDTO;
 import com.project.shortlink.admin.remote.dto.resp.LinkPageRespDTO;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.HashMap;
 import java.util.List;
@@ -59,5 +60,12 @@ public interface LinkRemoteService {
     //修改短链接
     default void linkUpdate(LinkUpdateDTO linkUpdateDTO){
         HttpUtil.post("http://localhost:8001/api/shortlink/project/link/update", JSON.toJSONString(linkUpdateDTO));
+    }
+
+    //获取原链接标题
+    default Result<String> getLinkTitle(@RequestParam("url") String url){
+        String resultStr = HttpUtil.get("http://localhost:8001/api/shortlink/project/link/title?url=" + url);
+        return JSON.parseObject(resultStr, new TypeReference<>() {
+        });
     }
 }
