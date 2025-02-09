@@ -29,6 +29,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -37,6 +40,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -83,6 +88,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 .validDateType(linkCreateDTO.getValidDateType())
                 .validDate(linkCreateDTO.getValidDate())
                 .describe(linkCreateDTO.getDescribe())
+                .favicon(this.getFavicon(linkCreateDTO.getOriginUrl()))
                 //添加短链
                 .shortUri(suffix)
                 .enableStatus(0)
@@ -118,6 +124,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 LinkUtil.getLinkCacheValidTime(linkCreateDTO.getValidDate()), TimeUnit.MILLISECONDS);
         //添加缓存（一个短链接可配合多个域名，反之同理，所以这里需要添加拼接了域名的完整的短链接）
         shorUriCreateCachePenetrationBloomFilter.add(fullShorUrl);
+        //返回前端
         return LinkCreateRespDTO
                 .builder()
                 .fullShortUrl("http://" + tLink.getFullShortUrl())
@@ -334,5 +341,25 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         }finally {
             lock.unlock();
         }
+    }
+
+    //获取原链接图标
+    //@SneakyThrows在方法体中自动捕获并处理异常，将异常转换为非受检异常（Unchecked Exception）并抛出。
+    @SneakyThrows
+    private String getFavicon(String url){
+        final URL targetUrl = new URL(url);
+        HttpURLConnection connection = (HttpURLConnection) targetUrl.openConnection();
+        connection.setRequestMethod("GET");
+        connection.connect();
+
+        int responseCode = connection.getResponseCode();
+        if (HttpURLConnection.HTTP_OK == responseCode) {
+            Document document = Jsoup.connect(url).get();
+            Element favicon = document.select("link[rel~=(?i)^(shortcut )?icon]").first();
+           if (favicon != null){
+               return favicon.attr("abs:href");
+           }
+        }
+        return "获取原链接图标失败";
     }
 }
