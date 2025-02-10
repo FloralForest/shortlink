@@ -5,12 +5,12 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.project.shortlink.admin.common.convention.result.Result;
+import com.project.shortlink.admin.remote.dto.req.RecycleBinSaveDTO;
 import com.project.shortlink.admin.dto.resp.LinkCountRespDTO;
-import com.project.shortlink.admin.remote.dto.req.LinkCreateDTO;
-import com.project.shortlink.admin.remote.dto.req.LinkPageDTO;
-import com.project.shortlink.admin.remote.dto.req.LinkUpdateDTO;
+import com.project.shortlink.admin.remote.dto.req.*;
 import com.project.shortlink.admin.remote.dto.resp.LinkCreateRespDTO;
 import com.project.shortlink.admin.remote.dto.resp.LinkPageRespDTO;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.HashMap;
@@ -67,5 +67,38 @@ public interface LinkRemoteService {
         String resultStr = HttpUtil.get("http://localhost:8001/api/shortlink/project/link/title?url=" + url);
         return JSON.parseObject(resultStr, new TypeReference<>() {
         });
+    }
+
+    //置入回收站
+    default void saveRecycleBin(@RequestBody RecycleBinSaveDTO recycleBinSaveDTO){
+        HttpUtil.post("http://localhost:8001/api/shortlink/project/link/recycle/saveRB",
+                JSON.toJSONString(recycleBinSaveDTO));
+    }
+
+    //回收站分页
+    default Result<IPage<LinkPageRespDTO>> pageRecycleLink(LinkRecycleBinPageDTO linkPageDTO){
+        Map<String, Object> map = new HashMap<>();
+        //分组集合
+        map.put("gidList", linkPageDTO.getGidList());
+        //当前页
+        map.put("current", linkPageDTO.getCurrent());
+        //每页数
+        map.put("size", linkPageDTO.getSize());
+        final String resultPage = HttpUtil.get("http://localhost:8001/api/shortlink/project/link/recycle/page", map);
+        //解析成json字符串 隐式转换
+        return JSON.parseObject(resultPage, new TypeReference<>() {
+        });
+    }
+
+    //短链接回收站恢复
+    default void recoverLink(RecycleBinRecoverDTO recycleBinRecoverDTO){
+        HttpUtil.post("http://localhost:8001/api/shortlink/project/link/recycle/recover",
+                JSON.toJSONString(recycleBinRecoverDTO));
+    }
+
+    //短链接回收站删除
+    default void removeLink(RecycleBinRemoveDTO recycleBinRecoverDTO){
+        HttpUtil.post("http://localhost:8001/api/shortlink/project/link/recycle/remove",
+                JSON.toJSONString(recycleBinRecoverDTO));
     }
 }

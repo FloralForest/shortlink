@@ -179,7 +179,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 .orderByDesc(TLink::getCreateTime);
         IPage<TLink> resultPage = baseMapper.selectPage(linkPageDTO, lambdaQueryWrapper);
 
-        return resultPage.convert(page ->{
+        return resultPage.convert(page -> {
             final LinkPageRespDTO result = BeanUtil.toBean(page, LinkPageRespDTO.class);
             result.setDomain("http://" + result.getDomain());
             return result;
@@ -266,19 +266,19 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         //查找redis缓存 根据前缀key和完整短链接查找原链接 (处理缓存击穿)
         String originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
         //使用字符串工具类判空
-        if (StrUtil.isNotBlank(originalLink)){
+        if (StrUtil.isNotBlank(originalLink)) {
             ((HttpServletResponse) response).sendRedirect(originalLink);
             return;
         }
         //处理缓存穿透(黑名单)
         final boolean contains = shorUriCreateCachePenetrationBloomFilter.contains(fullShortUrl);
-        if (!contains){
+        if (!contains) {
             ((HttpServletResponse) response).sendRedirect("/link/notfound");
             return;
         }
         //处理缓存穿透(黑名单)
         final String gotoIsNULL = stringRedisTemplate.opsForValue().get(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl));
-        if (StrUtil.isNotBlank(gotoIsNULL)){
+        if (StrUtil.isNotBlank(gotoIsNULL)) {
             ((HttpServletResponse) response).sendRedirect("/link/notfound");
             return;
         }
@@ -288,7 +288,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         try {
             //第一个线程拿到数据存入缓存后，后面就不必继续往下执行
             originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
-            if (StrUtil.isBlank(originalLink)){
+            if (StrUtil.isBlank(originalLink)) {
                 ((HttpServletResponse) response).sendRedirect(originalLink);
                 return;
             }
@@ -315,30 +315,28 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     .eq(TLink::getDelFlag, 0)
                     .eq(TLink::getEnableStatus, 0);
             final TLink tLink = baseMapper.selectOne(tLinkWrapper);
-            if (tLink != null) {
+            if (tLink == null || tLink.getValidDate() != null
+                    && Date.from(tLink.getValidDate().atZone(ZoneId.systemDefault()).toInstant()).before(new Date())) {
                 //短链接过期
-                if (tLink.getValidDate() != null
-                        && Date.from(tLink.getValidDate().atZone(ZoneId.systemDefault()).toInstant()).before(new Date())){
-                    //处理缓存穿透(黑名单)
-                    stringRedisTemplate.opsForValue().set(
-                            String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl),
-                            "-",
-                            30,
-                            TimeUnit.MINUTES);
-                    ((HttpServletResponse) response).sendRedirect("/link/notfound");
-                    return;
-                }
-                //第一个线程拿到存入缓存
-                //key前缀(GOTO_SHORT_LINK_KEY)和完整短链接(fullShortUrl)组成的key+原链接(tLink.getShortUri())组成的value存入redis
-                //缓存预热(把必访问的资源添加到缓存)过期时间按
+                //处理缓存穿透(黑名单)
                 stringRedisTemplate.opsForValue().set(
-                        String.format(GOTO_SHORT_LINK_KEY, fullShortUrl),
-                        tLink.getOriginUrl(),
-                        LinkUtil.getLinkCacheValidTime(tLink.getValidDate()), TimeUnit.MILLISECONDS);
-                //跳转（重定向）
-                ((HttpServletResponse) response).sendRedirect(tLink.getOriginUrl());
+                        String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl),
+                        "-",
+                        30,
+                        TimeUnit.MINUTES);
+                ((HttpServletResponse) response).sendRedirect("/link/notfound");
+                return;
             }
-        }finally {
+            //第一个线程拿到存入缓存
+            //key前缀(GOTO_SHORT_LINK_KEY)和完整短链接(fullShortUrl)组成的key+原链接(tLink.getShortUri())组成的value存入redis
+            //缓存预热(把必访问的资源添加到缓存)过期时间按
+            stringRedisTemplate.opsForValue().set(
+                    String.format(GOTO_SHORT_LINK_KEY, fullShortUrl),
+                    tLink.getOriginUrl(),
+                    LinkUtil.getLinkCacheValidTime(tLink.getValidDate()), TimeUnit.MILLISECONDS);
+            //跳转（重定向）
+            ((HttpServletResponse) response).sendRedirect(tLink.getOriginUrl());
+        } finally {
             lock.unlock();
         }
     }
@@ -346,7 +344,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     //获取原链接图标
     //@SneakyThrows在方法体中自动捕获并处理异常，将异常转换为非受检异常（Unchecked Exception）并抛出。
     @SneakyThrows
-    private String getFavicon(String url){
+    private String getFavicon(String url) {
         final URL targetUrl = new URL(url);
         HttpURLConnection connection = (HttpURLConnection) targetUrl.openConnection();
         connection.setRequestMethod("GET");
@@ -356,9 +354,9 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         if (HttpURLConnection.HTTP_OK == responseCode) {
             Document document = Jsoup.connect(url).get();
             Element favicon = document.select("link[rel~=(?i)^(shortcut )?icon]").first();
-           if (favicon != null){
-               return favicon.attr("abs:href");
-           }
+            if (favicon != null) {
+                return favicon.attr("abs:href");
+            }
         }
         return "获取原链接图标失败";
     }

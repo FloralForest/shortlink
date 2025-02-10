@@ -2,6 +2,7 @@ package com.project.shortlink.project.dao.entity.datebase;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -30,5 +31,6 @@ public class BaseDO {
      */
     //标记 配合com.project.shortlink.admin.config.MyMetaObjectHandler;
     @TableField(fill = FieldFill.INSERT)
+    @TableLogic     //表示该字段是逻辑删除字段
     private Integer delFlag;
 }
