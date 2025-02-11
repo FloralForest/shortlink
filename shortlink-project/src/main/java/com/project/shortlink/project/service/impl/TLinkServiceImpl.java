@@ -1,6 +1,9 @@
 package com.project.shortlink.project.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.date.DateTime;
+import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.date.Week;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -10,7 +13,9 @@ import com.project.shortlink.project.common.convention.exception.ClientException
 import com.project.shortlink.project.common.convention.exception.ServiceException;
 import com.project.shortlink.project.common.enums.VailDateTypeEnum;
 import com.project.shortlink.project.dao.entity.TLink;
+import com.project.shortlink.project.dao.entity.TLinkAccessStats;
 import com.project.shortlink.project.dao.entity.TLinkGoto;
+import com.project.shortlink.project.dao.mapper.TLinkAccessStatsMapper;
 import com.project.shortlink.project.dao.mapper.TLinkGotoMapper;
 import com.project.shortlink.project.dao.mapper.TLinkMapper;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
@@ -71,6 +76,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     private final StringRedisTemplate stringRedisTemplate;
     //锁
     private final RedissonClient redissonClient;
+
+    private final TLinkAccessStatsMapper tLinkAccessStatsMapper;
 
     //创建短链接
     @Override
@@ -267,6 +274,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         String originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
         //使用字符串工具类判空
         if (StrUtil.isNotBlank(originalLink)) {
+            this.shortLinkStats(fullShortUrl, null, request, response);
             ((HttpServletResponse) response).sendRedirect(originalLink);
             return;
         }
@@ -289,6 +297,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             //第一个线程拿到数据存入缓存后，后面就不必继续往下执行
             originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
             if (StrUtil.isBlank(originalLink)) {
+                this.shortLinkStats(fullShortUrl, null, request, response);
                 ((HttpServletResponse) response).sendRedirect(originalLink);
                 return;
             }
@@ -335,9 +344,39 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     tLink.getOriginUrl(),
                     LinkUtil.getLinkCacheValidTime(tLink.getValidDate()), TimeUnit.MILLISECONDS);
             //跳转（重定向）
+            this.shortLinkStats(fullShortUrl, tLink.getGid(), request, response);
             ((HttpServletResponse) response).sendRedirect(tLink.getOriginUrl());
         } finally {
             lock.unlock();
+        }
+    }
+
+    //短链接跳转数据统计
+    private void shortLinkStats(String fullShortUrl, String gid, ServletRequest request, ServletResponse response) {
+        try {
+            if (StrUtil.isBlank(gid)){
+                final LambdaQueryWrapper<TLinkGoto> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(TLinkGoto::getFullShortUrl, fullShortUrl);
+                gid = tLinkGotoMapper.selectOne(wrapper).getGid();
+            }
+            //获取当前时间为星期几，使用getIso8601Value更直观
+            final int week = DateUtil.dayOfWeekEnum(new Date()).getIso8601Value();
+            //获取当前时间的小时部分
+            final int hour = DateUtil.hour(new Date(), true);
+            final TLinkAccessStats stats = TLinkAccessStats
+                    .builder()
+                    .pv(1)
+                    .uv(1)
+                    .uip(1)
+                    .hour(hour)
+                    .weekday(week)
+                    .fullShortUrl(fullShortUrl)
+                    .gid(gid)
+                    .date(new Date())
+                    .build();
+            tLinkAccessStatsMapper.shortLinkStats(stats);
+        } catch (Throwable e) {
+            log.error("短链接访问量统计异常", e);
         }
     }
 

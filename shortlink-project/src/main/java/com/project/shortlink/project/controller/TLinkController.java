@@ -28,13 +28,13 @@ import java.util.List;
  */
 @RestController
 @RequiredArgsConstructor//配合Lombok的构造器注入
-@RequestMapping("/api/shortlink/project/")
+//@RequestMapping("/api/shortlink/project/")
 public class TLinkController {
     //@Resource JDK17后推荐使用final修饰加RequiredArgsConstructor构造器注入
     private final TLinkService tLinkService;
 
     //创建短链接
-    @PostMapping("link/createLink")
+    @PostMapping("/api/shortlink/project/link/createLink")
     //@RequestBody 将 HTTP 请求体（如 JSON、XML）中的数据转换为 Java 对象。
     public Result<LinkCreateRespDTO> createLink(@RequestBody LinkCreateDTO linkCreateDTO) {
         return Results.success(tLinkService.createLink(linkCreateDTO))
@@ -43,7 +43,7 @@ public class TLinkController {
     }
 
     //分页
-    @GetMapping("link/page")
+    @GetMapping("/api/shortlink/project/link/page")
     public Result<IPage<LinkPageRespDTO>> pageLink(LinkPageDTO linkPageDTO) {
         return Results.success(tLinkService.pageLink(linkPageDTO))
                 .setCode("20000")
@@ -51,7 +51,7 @@ public class TLinkController {
     }
 
     //分组内的短链接数量
-    @GetMapping("link/count")
+    @GetMapping("/api/shortlink/project/link/count")
     //@RequestParam 从URL的查询字符串（如 ?name=John&age=20）或 POST 表单数据中获取参数值。
     public Result<List<LinkCountRespDTO>> listLinkCount(@RequestParam("number") List<String> gidNumber) {
         return Results.success(tLinkService.listLinkCount(gidNumber))
@@ -60,7 +60,7 @@ public class TLinkController {
     }
 
     //短链接修改
-    @PostMapping("link/update")
+    @PostMapping("/api/shortlink/project/link/update")
     //@RequestBody 将 HTTP 请求体（如 JSON、XML）中的数据转换为 Java 对象。
     public Result<Void> linkUpdate(@RequestBody LinkUpdateDTO linkUpdateDTO) {
         tLinkService.linkUpdate(linkUpdateDTO);
@@ -70,7 +70,7 @@ public class TLinkController {
     }
 
     //实现短链接跳转(重定向到原链接)
-    @GetMapping("{linkUri}")
+    @GetMapping("/{linkUri}")
     //@PathVariable 从URL获取值
     public void linkUri(@PathVariable("linkUri") String linkUri,
                         ServletRequest request,
