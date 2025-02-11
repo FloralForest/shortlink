@@ -8,30 +8,38 @@ spring:
     # ShardingSphere 配置文件路径
     #${database.env:dev} 没有参数（如java -jar -Ddatabse.env=prod）时默认访问dev
     url: jdbc:shardingsphere:classpath:shardingsphere-config-${database.env:dev}.yml
-#  #数据库配置
-#  datasource:
-#    username: root
-#    password: root
-#    url: jdbc:mysql://127.0.0.1:3306/shortlink?characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true&serverTimezone=GMT%2B8
-#    driver-class-name: com.mysql.cj.jdbc.Driver
-#    #数据库连接池
-#    hikari:
-#      connection-test-query: select 1
-#      connection-timeout: 20000
-#      idle-timeout: 300000
-#      maximum-pool-size: 5
-#      minimum-idle: 5
+  #  #数据库配置
+  #  datasource:
+  #    username: root
+  #    password: root
+  #    url: jdbc:mysql://127.0.0.1:3306/shortlink?characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true&serverTimezone=GMT%2B8
+  #    driver-class-name: com.mysql.cj.jdbc.Driver
+  #    #数据库连接池
+  #    hikari:
+  #      connection-test-query: select 1
+  #      connection-timeout: 20000
+  #      idle-timeout: 300000
+  #      maximum-pool-size: 5
+  #      minimum-idle: 5
   #配置Redis参数
   data:
     redis:
       host: 127.0.0.1
       port: 6379
-#      password: 123456
-  #thymeleaf配置
+  #   password: 123456
+#  #thymeleaf配置
+#  mvc:
+#    view:
+#      prefix: /templates/
+#      suffix: .html
   mvc:
     view:
-      prefix: /templates/
+      prefix: classpath:/templates/
       suffix: .html
+  web:
+    resources:
+      static-locations: classpath:/static/
+
 ##mybatis日志
 #mybatis-plus:
 #  configuration:
