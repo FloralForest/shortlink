@@ -17,14 +17,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.project.shortlink.project.common.convention.exception.ClientException;
 import com.project.shortlink.project.common.convention.exception.ServiceException;
 import com.project.shortlink.project.common.enums.VailDateTypeEnum;
-import com.project.shortlink.project.dao.entity.TLink;
-import com.project.shortlink.project.dao.entity.TLinkAccessStats;
-import com.project.shortlink.project.dao.entity.TLinkGoto;
-import com.project.shortlink.project.dao.entity.TLinkLocaleStats;
-import com.project.shortlink.project.dao.mapper.TLinkAccessStatsMapper;
-import com.project.shortlink.project.dao.mapper.TLinkGotoMapper;
-import com.project.shortlink.project.dao.mapper.TLinkLocaleStatsMapper;
-import com.project.shortlink.project.dao.mapper.TLinkMapper;
+import com.project.shortlink.project.dao.entity.*;
+import com.project.shortlink.project.dao.mapper.*;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
 import com.project.shortlink.project.dto.req.LinkPageDTO;
 import com.project.shortlink.project.dto.req.LinkUpdateDTO;
@@ -88,7 +82,10 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
 
     private final TLinkAccessStatsMapper tLinkAccessStatsMapper;
     private final TLinkLocaleStatsMapper tLinkLocaleStatsMapper;
+    private final TLinkOsStatsMapper tLinkOsStatsMapper;
+    private final TLinkBrowserStatsMapper tLinkBrowserStatsMapper;
 
+    //高德获取ip密钥
     @Value("${short-link.stats.locale.amap-key}")
     private String localeKey;
 
@@ -432,7 +429,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             final JSONObject localeObject = JSON.parseObject(localeStr);
             final String infocode = localeObject.getString("infocode");
             if (StrUtil.isNotBlank(infocode) && StrUtil.equals(infocode, "10000")) {
-                final boolean blank = StrUtil.equals(localeObject.getString("province"),"[]");
+                final boolean blank = StrUtil.equals(localeObject.getString("province"), "[]");
                 TLinkLocaleStats localeStats = TLinkLocaleStats
                         .builder()
                         .fullShortUrl(fullShortUrl)
@@ -446,6 +443,26 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                         .build();
                 tLinkLocaleStatsMapper.shortLinkLocalStats(localeStats);
             }
+            //统计操作设备
+            TLinkOsStats osStats = TLinkOsStats
+                    .builder()
+                    .fullShortUrl(fullShortUrl)
+                    .gid(gid)
+                    .date(new Date())
+                    .cnt(1)
+                    .os(LinkUtil.getOs(((HttpServletRequest) request)))
+                    .build();
+            tLinkOsStatsMapper.shortLinkOsStats(osStats);
+            //统计浏览器
+            TLinkBrowserStats browserStats = TLinkBrowserStats
+                    .builder()
+                    .fullShortUrl(fullShortUrl)
+                    .gid(gid)
+                    .date(new Date())
+                    .cnt(1)
+                    .browser(LinkUtil.getBrowser(((HttpServletRequest) request)))
+                    .build();
+            tLinkBrowserStatsMapper.shortLinkBrowserState(browserStats);
         } catch (Throwable e) {
             log.error("短链接访问量统计异常", e);
         }

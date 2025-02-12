@@ -41,7 +41,7 @@ public class LinkUtil {
     }
 
     /**
-     *  获取用户ip
+     * 获取用户ip
      */
     public static String getClientIp(HttpServletRequest request) {
         String ip;
@@ -72,11 +72,57 @@ public class LinkUtil {
         // 回退到remoteAddr
         return request.getRemoteAddr();
     }
+
     private static String getHeaderValue(HttpServletRequest request, String header) {
         return request.getHeader(header);
     }
+
     private static boolean isValidIp(String ip) {
         return ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip);
+    }
+
+    /**
+     * 获取用户操作系统
+     */
+    public static String getOs(HttpServletRequest request) {
+        final String userAgent = request.getHeader("User-Agent");
+        //解析获取操作系统信息 将整个User-Agent字符串转换为全小写 检查转换后的字符串中是否包含“windows”等
+        //XXX windowsXXX -> true
+        if (userAgent.toLowerCase().contains("windows")) {
+            return "Windows";
+        } else if (userAgent.toLowerCase().contains("mac")) {
+            return "Mac OS";
+        } else if (userAgent.toLowerCase().contains("linux")) {
+            return "Linux";
+        } else if (userAgent.toLowerCase().contains("android")) {
+            return "Android";
+        } else if (userAgent.toLowerCase().contains("iphone") || userAgent.toLowerCase().contains("ipad")) {
+            return "IOS";
+        } else {
+            return "Unknown";
+        }
+    }
+
+    /**
+     * 获取用户访问浏览器
+     */
+    public static String getBrowser(HttpServletRequest request) {
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent.toLowerCase().contains("edg")) {
+            return "Microsoft Edge";
+        } else if (userAgent.toLowerCase().contains("chrome")) {
+            return "Google Chrome";
+        } else if (userAgent.toLowerCase().contains("firefox")) {
+            return "Mozilla Firefox";
+        } else if (userAgent.toLowerCase().contains("safari")) {
+            return "Apple Safari";
+        } else if (userAgent.toLowerCase().contains("opera")) {
+            return "Opera";
+        } else if (userAgent.toLowerCase().contains("msie") || userAgent.toLowerCase().contains("trident")) {
+            return "Internet Explorer";
+        } else {
+            return "Unknown";
+        }
     }
 }
 
