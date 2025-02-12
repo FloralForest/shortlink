@@ -2,6 +2,7 @@ package com.project.shortlink.project.util;
 
 import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -37,6 +38,45 @@ public class LinkUtil {
         // 转换（指定时区 ZoneId.systemDefault()使用jvm当前默认系统时区 转换为 Instant），Date.from()将Instant转换为Date
         Date validDate = Date.from(validDateTime.atZone(ZoneId.systemDefault()).toInstant());
         return getLinkCacheValidTime(validDate);
+    }
+
+    /**
+     *  获取用户ip
+     */
+    public static String getClientIp(HttpServletRequest request) {
+        String ip;
+        // 检查X-Forwarded-For头
+        ip = getHeaderValue(request, "X-Forwarded-For");
+        if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+            // 取第一个IP（客户端真实IP）
+            int index = ip.indexOf(',');
+            if (index != -1) {
+                ip = ip.substring(0, index).trim();
+            }
+            return ip;
+        }
+        // 检查其他头字段
+        String[] headers = {
+                "X-Real-IP",
+                "Proxy-Client-IP",
+                "WL-Proxy-Client-IP",
+                "HTTP_CLIENT_IP",
+                "HTTP_X_FORWARDED_FOR"
+        };
+        for (String header : headers) {
+            ip = getHeaderValue(request, header);
+            if (isValidIp(ip)) {
+                return ip;
+            }
+        }
+        // 回退到remoteAddr
+        return request.getRemoteAddr();
+    }
+    private static String getHeaderValue(HttpServletRequest request, String header) {
+        return request.getHeader(header);
+    }
+    private static boolean isValidIp(String ip) {
+        return ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip);
     }
 }
 

@@ -356,7 +356,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     //短链接跳转数据统计
     private void shortLinkStats(String fullShortUrl, String gid, ServletRequest request, ServletResponse response) {
         AtomicBoolean aBoolean = new AtomicBoolean();
-        Cookie[] cookies = ((HttpServletRequest) response).getCookies();
+        Cookie[] cookies = ((HttpServletRequest) request).getCookies();
         try {
             Runnable addCookie = () -> {
                 String uv = UUID.fastUUID().toString();
@@ -386,6 +386,10 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             } else {
                 addCookie.run();
             }
+            //统计ip
+            final String remoteAddr = LinkUtil.getClientIp(((HttpServletRequest) request));
+            final Long addUIP = stringRedisTemplate.opsForSet().add("short-link:stats:uip:" + fullShortUrl, remoteAddr);
+            boolean ipBoolean = addUIP != null && addUIP > 0L;
             if (StrUtil.isBlank(gid)) {
                 final LambdaQueryWrapper<TLinkGoto> wrapper = new LambdaQueryWrapper<>();
                 wrapper.eq(TLinkGoto::getFullShortUrl, fullShortUrl);
@@ -399,7 +403,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     .builder()
                     .pv(1)
                     .uv(aBoolean.get() ? 1 : 0)
-                    .uip(1)
+                    .uip(ipBoolean ? 1 : 0)
                     .hour(hour)
                     .weekday(week)
                     .fullShortUrl(fullShortUrl)
