@@ -7,6 +7,9 @@ import cn.hutool.core.date.Week;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.http.HttpUtil;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -17,8 +20,10 @@ import com.project.shortlink.project.common.enums.VailDateTypeEnum;
 import com.project.shortlink.project.dao.entity.TLink;
 import com.project.shortlink.project.dao.entity.TLinkAccessStats;
 import com.project.shortlink.project.dao.entity.TLinkGoto;
+import com.project.shortlink.project.dao.entity.TLinkLocaleStats;
 import com.project.shortlink.project.dao.mapper.TLinkAccessStatsMapper;
 import com.project.shortlink.project.dao.mapper.TLinkGotoMapper;
+import com.project.shortlink.project.dao.mapper.TLinkLocaleStatsMapper;
 import com.project.shortlink.project.dao.mapper.TLinkMapper;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
 import com.project.shortlink.project.dto.req.LinkPageDTO;
@@ -44,6 +49,7 @@ import org.jsoup.nodes.Element;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -58,6 +64,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.project.shortlink.project.common.constant.RedisKeyConstant.*;
+import static com.project.shortlink.project.common.constant.ShortLinkConstant.AMAP_REMOTE_URL;
 
 /**
  * <p>
@@ -80,6 +87,10 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     private final RedissonClient redissonClient;
 
     private final TLinkAccessStatsMapper tLinkAccessStatsMapper;
+    private final TLinkLocaleStatsMapper tLinkLocaleStatsMapper;
+
+    @Value("${short-link.stats.locale.amap-key}")
+    private String localeKey;
 
     //创建短链接
     @Override
@@ -411,6 +422,30 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     .date(new Date())
                     .build();
             tLinkAccessStatsMapper.shortLinkStats(stats);
+            //短链接访问地区统计
+            final Map<String, Object> map = new HashMap<>();
+            //高德密钥
+            map.put("Key", localeKey);
+            //当前访问ip
+            map.put("ip", remoteAddr);
+            final String localeStr = HttpUtil.get(AMAP_REMOTE_URL, map);
+            final JSONObject localeObject = JSON.parseObject(localeStr);
+            final String infocode = localeObject.getString("infocode");
+            if (StrUtil.isNotBlank(infocode) && StrUtil.equals(infocode, "10000")) {
+                final boolean blank = StrUtil.equals(localeObject.getString("province"),"[]");
+                TLinkLocaleStats localeStats = TLinkLocaleStats
+                        .builder()
+                        .fullShortUrl(fullShortUrl)
+                        .gid(gid)
+                        .date(new Date())
+                        .province(blank ? "未知" : localeObject.getString("province"))
+                        .city(blank ? "未知" : localeObject.getString("city"))
+                        .adcode(blank ? "未知" : localeObject.getString("adcode"))
+                        .cnt(1)
+                        .country("中国")
+                        .build();
+                tLinkLocaleStatsMapper.shortLinkLocalStats(localeStats);
+            }
         } catch (Throwable e) {
             log.error("短链接访问量统计异常", e);
         }

@@ -39,6 +39,11 @@ spring:
   web:
     resources:
       static-locations: classpath:/static/
+#高德地图ip服务密钥
+short-link:
+  stats:
+    locale:
+      amap-key: 8593e7a96162641f142f53a419991cb4
 
 ##mybatis日志
 #mybatis-plus:
