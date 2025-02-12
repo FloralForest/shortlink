@@ -2,7 +2,7 @@ package com.project;
 
 import cn.hutool.core.util.StrUtil;
 
-public class Test {
+public class TestSys {
 
     @org.junit.jupiter.api.Test
     public void test(){
