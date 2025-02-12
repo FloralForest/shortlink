@@ -4,6 +4,8 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.date.Week;
+import cn.hutool.core.lang.UUID;
+import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -30,6 +32,8 @@ import com.project.shortlink.project.util.HashUtil;
 import com.project.shortlink.project.util.LinkUtil;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -49,11 +53,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.project.shortlink.project.common.constant.RedisKeyConstant.*;
 
@@ -353,8 +355,38 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
 
     //短链接跳转数据统计
     private void shortLinkStats(String fullShortUrl, String gid, ServletRequest request, ServletResponse response) {
+        AtomicBoolean aBoolean = new AtomicBoolean();
+        Cookie[] cookies = ((HttpServletRequest) response).getCookies();
         try {
-            if (StrUtil.isBlank(gid)){
+            Runnable addCookie = () -> {
+                String uv = UUID.fastUUID().toString();
+                //设置cookie存于浏览器，标识同一个用户访问短链接
+                Cookie cookie = new Cookie("uv", uv);
+                //过期时间一个月
+                cookie.setMaxAge(60 * 60 * 24 * 30);
+                //如baidu.com/3V21X8 返回/3V21X8并添加cookie的作用路径（只要短连接部分，因为一个短链接可能有多个域名）
+                //控制浏览器在哪些请求中携带该Cookie。表示只有访问/3V21X8 及其子路径时，浏览器才会发送此 Cookie
+                cookie.setPath(StrUtil.sub(fullShortUrl, fullShortUrl.indexOf("/"), fullShortUrl.length()));
+                ((HttpServletResponse) response).addCookie(cookie);
+                stringRedisTemplate.opsForSet().add("short-link:stats:uv:" + fullShortUrl, uv);
+                aBoolean.set(Boolean.TRUE);
+            };
+            //判断是否携带cookie 如果携带进一步判断
+            if (ArrayUtil.isNotEmpty(cookies)) {
+                Arrays.stream(cookies)
+                        //只保留名为 "uv" 的 Cookie
+                        .filter(each -> Objects.equals(each.getName(), "uv"))
+                        //获取第一个匹配项
+                        .findFirst().map(Cookie::getValue)
+                        .ifPresentOrElse(each -> {
+                            //如果存在将UV标识存入Redis Set（统计去重）
+                            final Long addUV = stringRedisTemplate.opsForSet().add("short-link:stats:uv:" + fullShortUrl, each);
+                            aBoolean.set(addUV != null && addUV > 0L);
+                        }, addCookie);
+            } else {
+                addCookie.run();
+            }
+            if (StrUtil.isBlank(gid)) {
                 final LambdaQueryWrapper<TLinkGoto> wrapper = new LambdaQueryWrapper<>();
                 wrapper.eq(TLinkGoto::getFullShortUrl, fullShortUrl);
                 gid = tLinkGotoMapper.selectOne(wrapper).getGid();
@@ -366,7 +398,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             final TLinkAccessStats stats = TLinkAccessStats
                     .builder()
                     .pv(1)
-                    .uv(1)
+                    .uv(aBoolean.get() ? 1 : 0)
                     .uip(1)
                     .hour(hour)
                     .weekday(week)
