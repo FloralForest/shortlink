@@ -37,7 +37,7 @@ public class CodeGetP {
 
         //策略配置
         StrategyConfig strategyConfig = new StrategyConfig.Builder()
-                .addInclude("t_link_browser_stats")
+                .addInclude("t_link_network_stats")
                 .entityBuilder()  // 实体配置分离
                 .naming(NamingStrategy.underline_to_camel)
                 .columnNaming(NamingStrategy.underline_to_camel)

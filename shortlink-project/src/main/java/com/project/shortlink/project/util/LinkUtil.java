@@ -124,5 +124,25 @@ public class LinkUtil {
             return "Unknown";
         }
     }
+
+    /**
+     * 获取用户访问设备
+     */
+    public static String getDevice(HttpServletRequest request) {
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent.toLowerCase().contains("mobile")) {
+            return "Mobile";
+        }
+        return "PC";
+    }
+
+    /**
+     * 获取用户访问网络
+     */
+    public static String getNetwork(HttpServletRequest request) {
+        String actualIp = getClientIp(request);
+        // 这里简单判断IP地址范围， 例如，通过调用IP地址来判断网络类型
+        return actualIp.startsWith("192.168.") || actualIp.startsWith("10.") ? "WIFI" : "Mobile Networks";
+    }
 }
 

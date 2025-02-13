@@ -37,6 +37,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.shardingsphere.distsql.parser.autogen.KernelDistSQLStatementParser;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -56,6 +57,7 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.project.shortlink.project.common.constant.RedisKeyConstant.*;
 import static com.project.shortlink.project.common.constant.ShortLinkConstant.AMAP_REMOTE_URL;
@@ -84,6 +86,9 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     private final TLinkLocaleStatsMapper tLinkLocaleStatsMapper;
     private final TLinkOsStatsMapper tLinkOsStatsMapper;
     private final TLinkBrowserStatsMapper tLinkBrowserStatsMapper;
+    private final TLinkAccessLogsMapper tLinkAccessLogsMapper;
+    private final TLinkDeviceStatsMapper tLinkDeviceStatsMapper;
+    private final TLinkNetworkStatsMapper tLinkNetworkStatsMapper;
 
     //高德获取ip密钥
     @Value("${short-link.stats.locale.amap-key}")
@@ -366,17 +371,18 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         AtomicBoolean aBoolean = new AtomicBoolean();
         Cookie[] cookies = ((HttpServletRequest) request).getCookies();
         try {
+            final AtomicReference<String> uv = new AtomicReference<>();
             Runnable addCookie = () -> {
-                String uv = UUID.fastUUID().toString();
+                uv.set(UUID.fastUUID().toString());
                 //设置cookie存于浏览器，标识同一个用户访问短链接
-                Cookie cookie = new Cookie("uv", uv);
+                Cookie cookie = new Cookie("uv", uv.get());
                 //过期时间一个月
                 cookie.setMaxAge(60 * 60 * 24 * 30);
                 //如baidu.com/3V21X8 返回/3V21X8并添加cookie的作用路径（只要短连接部分，因为一个短链接可能有多个域名）
                 //控制浏览器在哪些请求中携带该Cookie。表示只有访问/3V21X8 及其子路径时，浏览器才会发送此 Cookie
                 cookie.setPath(StrUtil.sub(fullShortUrl, fullShortUrl.indexOf("/"), fullShortUrl.length()));
                 ((HttpServletResponse) response).addCookie(cookie);
-                stringRedisTemplate.opsForSet().add("short-link:stats:uv:" + fullShortUrl, uv);
+                stringRedisTemplate.opsForSet().add("short-link:stats:uv:" + fullShortUrl, uv.get());
                 aBoolean.set(Boolean.TRUE);
             };
             //判断是否携带cookie 如果携带进一步判断
@@ -388,6 +394,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                         .findFirst().map(Cookie::getValue)
                         .ifPresentOrElse(each -> {
                             //如果存在将UV标识存入Redis Set（统计去重）
+                            uv.set(each);
                             final Long addUV = stringRedisTemplate.opsForSet().add("short-link:stats:uv:" + fullShortUrl, each);
                             aBoolean.set(addUV != null && addUV > 0L);
                         }, addCookie);
@@ -444,25 +451,60 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 tLinkLocaleStatsMapper.shortLinkLocalStats(localeStats);
             }
             //统计操作设备
+            final String os = LinkUtil.getOs(((HttpServletRequest) request));
             TLinkOsStats osStats = TLinkOsStats
                     .builder()
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
                     .date(new Date())
                     .cnt(1)
-                    .os(LinkUtil.getOs(((HttpServletRequest) request)))
+                    .os(os)
                     .build();
             tLinkOsStatsMapper.shortLinkOsStats(osStats);
             //统计浏览器
+            final String browser = LinkUtil.getBrowser(((HttpServletRequest) request));
             TLinkBrowserStats browserStats = TLinkBrowserStats
                     .builder()
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
                     .date(new Date())
                     .cnt(1)
-                    .browser(LinkUtil.getBrowser(((HttpServletRequest) request)))
+                    .browser(browser)
                     .build();
             tLinkBrowserStatsMapper.shortLinkBrowserState(browserStats);
+            //统计高频访问IP(user用于统计新老访客->选择一段时间，查询用户是否在过去访问过，访问过则为老访客)
+            TLinkAccessLogs accessLogs = TLinkAccessLogs
+                    .builder()
+                    .fullShortUrl(fullShortUrl)
+                    .gid(gid)
+                    .user(uv.get())
+                    .browser(browser)
+                    .os(os)
+                    .ip(remoteAddr)
+                    .build();
+            tLinkAccessLogsMapper.insert(accessLogs);
+            //统计设备
+            final String device = LinkUtil.getDevice(((HttpServletRequest) request));
+            TLinkDeviceStats deviceStats = TLinkDeviceStats
+                    .builder()
+                    .fullShortUrl(fullShortUrl)
+                    .gid(gid)
+                    .date(new Date())
+                    .cnt(1)
+                    .device(device)
+                    .build();
+            tLinkDeviceStatsMapper.shortLinkDeviceStats(deviceStats);
+            //统计网络类型
+            final String network = LinkUtil.getNetwork((HttpServletRequest) request);
+            TLinkNetworkStats networkStats = TLinkNetworkStats
+                    .builder()
+                    .fullShortUrl(fullShortUrl)
+                    .gid(gid)
+                    .date(new Date())
+                    .cnt(1)
+                    .network(network)
+                    .build();
+            tLinkNetworkStatsMapper.shortLinkNetworkStats(networkStats);
         } catch (Throwable e) {
             log.error("短链接访问量统计异常", e);
         }
