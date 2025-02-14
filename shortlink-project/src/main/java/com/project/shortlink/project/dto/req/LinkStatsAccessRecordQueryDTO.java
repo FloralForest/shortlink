@@ -40,7 +40,7 @@ public class LinkStatsAccessRecordQueryDTO {
     /**
      *查询的用户集合
      */
-    private List<String> user;
+    private List<String> userList;
 
 }
 

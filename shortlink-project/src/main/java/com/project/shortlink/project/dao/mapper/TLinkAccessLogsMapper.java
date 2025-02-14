@@ -63,7 +63,7 @@ public interface TLinkAccessLogsMapper extends BaseMapper<TLinkAccessLogs> {
             "    full_short_url = #{param.fullShortUrl} " +
             "    AND gid = #{param.gid} " +
             "    AND user IN " +
-            "    <foreach item='item' index='index' collection='param.user' open='(' separator=',' close=')'> " +
+            "    <foreach item='item' index='index' collection='param.userList' open='(' separator=',' close=')'> " +
             "        #{item} " +
             "    </foreach> " +
             "GROUP BY " +

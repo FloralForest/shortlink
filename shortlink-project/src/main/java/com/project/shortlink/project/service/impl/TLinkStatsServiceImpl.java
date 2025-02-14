@@ -267,7 +267,7 @@ public class TLinkStatsServiceImpl implements TLinkStatsService {
                 .fullShortUrl(linkStatsDTO.getFullShortUrl())
                 .startDate(linkStatsDTO.getStartDate())
                 .endDate(linkStatsDTO.getEndDate())
-                .user(userAccessLogsList)
+                .userList(userAccessLogsList)
                 .build();
         //查询新老访客
         List<Map<String, Object>> uvTypeList = tLinkAccessLogsMapper.selectUvTypeByUsers(accessLogsQueryDTO);
