@@ -1,13 +1,16 @@
 package com.project.shortlink.project.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.date.DateField;
 import cn.hutool.core.date.DateUtil;
-import com.project.shortlink.project.dao.entity.TLinkAccessStats;
-import com.project.shortlink.project.dao.entity.TLinkDeviceStats;
-import com.project.shortlink.project.dao.entity.TLinkLocaleStats;
-import com.project.shortlink.project.dao.entity.TLinkNetworkStats;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.project.shortlink.project.dao.entity.*;
 import com.project.shortlink.project.dao.mapper.*;
+import com.project.shortlink.project.dto.req.LinkStatsAccessRecordDTO;
+import com.project.shortlink.project.dto.req.LinkStatsAccessRecordQueryDTO;
 import com.project.shortlink.project.dto.req.LinkStatsDTO;
 import com.project.shortlink.project.dto.resp.*;
 import com.project.shortlink.project.service.TLinkStatsService;
@@ -32,6 +35,7 @@ public class TLinkStatsServiceImpl implements TLinkStatsService {
     private final TLinkDeviceStatsMapper tLinkDeviceStatsMapper;
     private final TLinkNetworkStatsMapper tLinkNetworkStatsMapper;
 
+    //短链接监控所有数据
     @Override
     public LinkStatsRespDTO oneLinkStats(LinkStatsDTO linkStatsDTO) {
         //没有记录返回空
@@ -239,5 +243,43 @@ public class TLinkStatsServiceImpl implements TLinkStatsService {
                 .deviceStats(deviceList)
                 .networkStats(networkList)
                 .build();
+    }
+
+    //短链接监控访问记录(日志) + 分页
+    @Override
+    public IPage<LinkStatsAccessRecordRespDTO> linkStatsAccessRecord(LinkStatsAccessRecordDTO linkStatsDTO) {
+        final LambdaQueryWrapper<TLinkAccessLogs> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper
+                .eq(TLinkAccessLogs::getGid, linkStatsDTO.getGid())
+                .eq(TLinkAccessLogs::getFullShortUrl,linkStatsDTO.getFullShortUrl())
+                .between(TLinkAccessLogs::getCreateTime, linkStatsDTO.getStartDate(), linkStatsDTO.getEndDate())
+                .eq(TLinkAccessLogs::getDelFlag,0)
+                .orderByDesc(TLinkAccessLogs::getCreateTime);
+        //提供分页条件和查询条件
+        IPage<TLinkAccessLogs> linkAccessLogsPage = tLinkAccessLogsMapper.selectPage(linkStatsDTO, queryWrapper);
+        //把查询到的数据转成目标返回对象 TLinkAccessLogs -> LinkStatsAccessRecordRespDTO
+        final IPage<LinkStatsAccessRecordRespDTO> actualResult = linkAccessLogsPage.convert(each -> BeanUtil.toBean(each, LinkStatsAccessRecordRespDTO.class));
+        //获得用户集合
+        List<String> userAccessLogsList = actualResult.getRecords().stream().map(LinkStatsAccessRecordRespDTO::getUser).toList();
+        final LinkStatsAccessRecordQueryDTO accessLogsQueryDTO = LinkStatsAccessRecordQueryDTO
+                .builder()
+                .gid(linkStatsDTO.getGid())
+                .fullShortUrl(linkStatsDTO.getFullShortUrl())
+                .startDate(linkStatsDTO.getStartDate())
+                .endDate(linkStatsDTO.getEndDate())
+                .user(userAccessLogsList)
+                .build();
+        //查询新老访客
+        List<Map<String, Object>> uvTypeList = tLinkAccessLogsMapper.selectUvTypeByUsers(accessLogsQueryDTO);
+        actualResult.getRecords().forEach(each ->{
+            final String uvType = uvTypeList.stream()
+                    .filter(item -> Objects.equals(each.getUser(), item.get("user")))
+                    .findFirst()
+                    .map(item -> item.get("uvType"))
+                    .map(Object::toString)
+                    .orElse("旧访客");
+            each.setUvType(uvType);
+        });
+        return actualResult;
     }
 }

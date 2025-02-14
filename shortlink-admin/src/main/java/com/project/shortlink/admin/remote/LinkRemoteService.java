@@ -11,6 +11,7 @@ import com.project.shortlink.admin.dto.resp.LinkCountRespDTO;
 import com.project.shortlink.admin.remote.dto.req.*;
 import com.project.shortlink.admin.remote.dto.resp.LinkCreateRespDTO;
 import com.project.shortlink.admin.remote.dto.resp.LinkPageRespDTO;
+import com.project.shortlink.admin.remote.dto.resp.LinkStatsAccessRecordRespDTO;
 import com.project.shortlink.admin.remote.dto.resp.LinkStatsRespDTO;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -108,6 +109,17 @@ public interface LinkRemoteService {
     default Result<LinkStatsRespDTO> oneLinkStats(LinkStatsDTO linkStatsDTO) {
         String resultBodyStr = HttpUtil.get("http://localhost:8001/api/shortlink/project/stats", BeanUtil.beanToMap(linkStatsDTO));
         return JSON.parseObject(resultBodyStr, new TypeReference<>() {
+        });
+    }
+
+    //短链接监控访问记录(日志) + 分页
+    default Result<IPage<LinkStatsAccessRecordRespDTO>> linkStatsAccessRecord(LinkStatsAccessRecordDTO linkPageDTO){
+        Map<String, Object> map = BeanUtil.beanToMap(linkPageDTO,false,true);
+        map.remove("orders");
+        map.remove("records");
+        String resultPage = HttpUtil.get("http://localhost:8001/api/shortlink/project/stats/lar", map);
+        //解析成json字符串 隐式转换
+        return JSON.parseObject(resultPage, new TypeReference<>() {
         });
     }
 }

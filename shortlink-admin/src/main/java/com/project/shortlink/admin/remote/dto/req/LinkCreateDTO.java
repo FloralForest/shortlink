@@ -22,44 +22,37 @@ public class LinkCreateDTO {
     /**
      * 域名
      */
-    @TableField("domain")
     private String domain;
 
     /**
      * 原始链接
      */
-    @TableField("origin_url")
     private String originUrl;
 
     /**
      * 分组标识
      */
-    @TableField("gid")
     private String gid;
 
     /**
      * 创建类型 0：控制台 1：接口
      */
-    @TableField("created_type")
     private Integer createdType;
 
     /**
      * 有效期类型 0：永久有效 1：用户自定义
      */
-    @TableField("valid_date_type")
     private Integer validDateType;
 
     /**
      * 有效期
      * json序列化工具
      */
-    @TableField("valid_date")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime validDate;
 
     /**
      * 描述
      */
-    @TableField("describe")
     private String describe;
 }

@@ -28,13 +28,11 @@ public class LinkCreateRespDTO {
     /**
      * 域名
      */
-    @TableField("domain")
     private String domain;
 
     /**
      * 原始链接
      */
-    @TableField("origin_url")
     private String originUrl;
 
     /**

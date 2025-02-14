@@ -1,8 +1,11 @@
 package com.project.shortlink.project.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.project.shortlink.project.common.convention.result.Result;
 import com.project.shortlink.project.common.convention.result.Results;
+import com.project.shortlink.project.dto.req.LinkStatsAccessRecordDTO;
 import com.project.shortlink.project.dto.req.LinkStatsDTO;
+import com.project.shortlink.project.dto.resp.LinkStatsAccessRecordRespDTO;
 import com.project.shortlink.project.dto.resp.LinkStatsRespDTO;
 import com.project.shortlink.project.service.TLinkStatsService;
 import lombok.RequiredArgsConstructor;
@@ -17,9 +20,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class LinkStatsController {
     private final TLinkStatsService linkStatsService;
 
+    //短链接监控所有数据
     @GetMapping("/api/shortlink/project/stats")
     public Result<LinkStatsRespDTO> linkStats(LinkStatsDTO linkStatsDTO){
         return Results.success(linkStatsService.oneLinkStats(linkStatsDTO))
+                .setCode("20000")
+                .setMessage("查询成功");
+    }
+
+    //短链接监控访问记录(日志) + 分页
+    @GetMapping("/api/shortlink/project/stats/lar")
+    public Result<IPage<LinkStatsAccessRecordRespDTO>> linkAccessRecord(LinkStatsAccessRecordDTO linkStatsDTO){
+        return Results.success(linkStatsService.linkStatsAccessRecord(linkStatsDTO))
                 .setCode("20000")
                 .setMessage("查询成功");
     }

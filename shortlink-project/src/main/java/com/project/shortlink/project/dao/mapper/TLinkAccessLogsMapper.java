@@ -2,15 +2,15 @@ package com.project.shortlink.project.dao.mapper;
 
 import com.project.shortlink.project.dao.entity.TLinkAccessLogs;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.project.shortlink.project.dao.entity.TLinkBrowserStats;
+import com.project.shortlink.project.dto.req.LinkStatsAccessRecordQueryDTO;
 import com.project.shortlink.project.dto.req.LinkStatsDTO;
-import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * <p>
@@ -48,4 +48,27 @@ public interface TLinkAccessLogsMapper extends BaseMapper<TLinkAccessLogs> {
             "        user " +
             ") AS user_counts;")
     HashMap<String, Object> findUvTypeCntByShortLink(@Param("param") LinkStatsDTO requestParam);
+
+    //根据日期查询用户是新访客还是老访客
+    @Select("<script> " +
+            "SELECT " +
+            "    user, " +
+            "    CASE " +
+            "        WHEN MIN(create_time) BETWEEN #{param.startDate} AND #{param.endDate} THEN '新访客' " +
+            "        ELSE '老访客' " +
+            "    END AS uvType " +
+            "FROM " +
+            "    t_link_access_logs " +
+            "WHERE " +
+            "    full_short_url = #{param.fullShortUrl} " +
+            "    AND gid = #{param.gid} " +
+            "    AND user IN " +
+            "    <foreach item='item' index='index' collection='param.user' open='(' separator=',' close=')'> " +
+            "        #{item} " +
+            "    </foreach> " +
+            "GROUP BY " +
+            "    user;" +
+            "    </script>"
+    )
+    List<Map<String, Object>> selectUvTypeByUsers(@Param("param") LinkStatsAccessRecordQueryDTO accessLogsQueryDTO);
 }
