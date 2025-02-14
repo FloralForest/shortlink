@@ -3,9 +3,14 @@ package com.project.shortlink.project.dao.mapper;
 import com.project.shortlink.project.dao.entity.TLinkLocaleStats;
 import com.project.shortlink.project.dao.entity.TLinkOsStats;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.project.shortlink.project.dto.req.LinkStatsDTO;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.HashMap;
+import java.util.List;
 
 /**
  * <p>
@@ -25,4 +30,12 @@ public interface TLinkOsStatsMapper extends BaseMapper<TLinkOsStats> {
             "ON DUPLICATE KEY UPDATE " +
             "cnt = cnt + #{ls.cnt};")
     void shortLinkOsStats(@Param("ls") TLinkOsStats localeStats);
+
+    //根据短链接获取指定日期内操作系统监控数据 根据短链接、gid、操作系统 合计cnt在同一操作系统的数值 SUM() -- 返回某列值之和
+    @Select("SELECT os, SUM(cnt) AS cnt " +
+            "FROM t_link_os_stats " +
+            "WHERE full_short_url = #{param.fullShortUrl} AND gid = #{param.gid} AND date BETWEEN #{param.startDate} and #{param.endDate} " +
+            "GROUP BY " +
+            "full_short_url, gid, os;")
+    List<HashMap<String, Object>> listOsStatsByShortLink(@Param("param") LinkStatsDTO requestParam);
 }
