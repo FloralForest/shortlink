@@ -69,4 +69,21 @@ public class TLinkAccessLogs extends BaseDO implements Serializable {
      */
     @TableField("ip")
     private String ip;
+
+    /**
+     * 设备
+     */
+    @TableField("device")
+    private String device;
+    /**
+     * 网络
+     */
+    @TableField("network")
+    private String network;
+    /**
+     * 地区
+     */
+    @TableField("locale")
+    private String locale;
+
 }

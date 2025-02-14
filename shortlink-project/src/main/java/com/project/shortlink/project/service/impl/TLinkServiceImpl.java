@@ -431,6 +431,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             final String localeStr = HttpUtil.get(AMAP_REMOTE_URL, map);
             final JSONObject localeObject = JSON.parseObject(localeStr);
             final String infocode = localeObject.getString("infocode");
+            String actualProvince = "未知";
+            String actualCity = "未知";
             if (StrUtil.isNotBlank(infocode) && StrUtil.equals(infocode, "10000")) {
                 final boolean blank = StrUtil.equals(localeObject.getString("province"), "[]");
                 TLinkLocaleStats localeStats = TLinkLocaleStats
@@ -438,8 +440,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                         .fullShortUrl(fullShortUrl)
                         .gid(gid)
                         .date(new Date())
-                        .province(blank ? "未知" : localeObject.getString("province"))
-                        .city(blank ? "未知" : localeObject.getString("city"))
+                        .province(actualProvince = blank ? "未知" : localeObject.getString("province"))
+                        .city(actualCity = blank ? "未知" : localeObject.getString("city"))
                         .adcode(blank ? "未知" : localeObject.getString("adcode"))
                         .cnt(1)
                         .country("中国")
@@ -468,17 +470,6 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     .browser(browser)
                     .build();
             tLinkBrowserStatsMapper.shortLinkBrowserState(browserStats);
-            //统计高频访问IP(user用于统计新老访客->选择一段时间，查询用户是否在过去访问过，访问过则为老访客)
-            TLinkAccessLogs accessLogs = TLinkAccessLogs
-                    .builder()
-                    .fullShortUrl(fullShortUrl)
-                    .gid(gid)
-                    .user(uv.get())
-                    .browser(browser)
-                    .os(os)
-                    .ip(remoteAddr)
-                    .build();
-            tLinkAccessLogsMapper.insert(accessLogs);
             //统计设备
             final String device = LinkUtil.getDevice(((HttpServletRequest) request));
             TLinkDeviceStats deviceStats = TLinkDeviceStats
@@ -501,6 +492,20 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     .network(network)
                     .build();
             tLinkNetworkStatsMapper.shortLinkNetworkStats(networkStats);
+            //统计高频访问IP(user用于统计新老访客->选择一段时间，查询用户是否在过去访问过，访问过则为老访客)
+            TLinkAccessLogs accessLogs = TLinkAccessLogs
+                    .builder()
+                    .fullShortUrl(fullShortUrl)
+                    .gid(gid)
+                    .user(uv.get())
+                    .browser(browser)
+                    .os(os)
+                    .ip(remoteAddr)
+                    .network(network)
+                    .device(device)
+                    .locale(StrUtil.join("-","中国",actualProvince,actualCity))
+                    .build();
+            tLinkAccessLogsMapper.insert(accessLogs);
         } catch (Throwable e) {
             log.error("短链接访问量统计异常", e);
         }
