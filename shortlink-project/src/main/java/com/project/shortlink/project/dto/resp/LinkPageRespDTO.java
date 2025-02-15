@@ -74,4 +74,34 @@ public class LinkPageRespDTO {
      */
     private String describe;
 
+    /**
+     * 历史pv
+     */
+    private Integer totalPv;
+
+    /**
+     * 今日pv
+     */
+    private Integer todayPv;
+
+    /**
+     * 历史Uv
+     */
+    private Integer totalUv;
+
+    /**
+     * 今日Uv
+     */
+    private Integer todayUv;
+
+    /**
+     * 历史Uip
+     */
+    private Integer totalUip;
+
+    /**
+     * 今日Uip
+     */
+    private Integer todayUip;
+
 }

@@ -107,6 +107,9 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 .validDate(linkCreateDTO.getValidDate())
                 .describe(linkCreateDTO.getDescribe())
                 .favicon(this.getFavicon(linkCreateDTO.getOriginUrl()))
+                .totalPv(0)
+                .totalUv(0)
+                .totalUip(0)
                 //添加短链
                 .shortUri(suffix)
                 .enableStatus(0)
@@ -506,6 +509,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     .locale(StrUtil.join("-","中国",actualProvince,actualCity))
                     .build();
             tLinkAccessLogsMapper.insert(accessLogs);
+            //link表修改历史pv、uv、uip
+            baseMapper.incrementStats(gid, fullShortUrl, 1, aBoolean.get() ? 1 : 0, ipBoolean ? 1 : 0);
         } catch (Throwable e) {
             log.error("短链接访问量统计异常", e);
         }

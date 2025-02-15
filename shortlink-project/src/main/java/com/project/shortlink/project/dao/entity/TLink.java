@@ -114,4 +114,22 @@ public class TLink extends BaseDO implements Serializable {
     @TableField("`describe`")
     private String describe;
 
+    /**
+     * 历史pv
+     */
+    @TableField("total_pv")
+    private Integer totalPv;
+
+    /**
+     * 历史uv
+     */
+    @TableField("total_uv")
+    private Integer totalUv;
+
+    /**
+     * 历史uip
+     */
+    @TableField("total_uip")
+    private Integer totalUip;
+
 }
