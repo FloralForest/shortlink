@@ -132,4 +132,28 @@ public class TLink extends BaseDO implements Serializable {
     @TableField("total_uip")
     private Integer totalUip;
 
+    /**
+     * 今日pv
+     * today表数据映射
+     * 表不存在字段exist = false
+     */
+    @TableField(exist = false)
+    private Integer todayPv;
+
+    /**
+     * 今日uv
+     * today表数据映射
+     * 表不存在字段exist = false
+     */
+    @TableField(exist = false)
+    private Integer todayUv;
+
+    /**
+     * 今日uip
+     * today表数据映射
+     * 表不存在字段exist = false
+     */
+    @TableField(exist = false)
+    private Integer todayUip;
+
 }

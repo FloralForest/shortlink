@@ -39,6 +39,8 @@ public interface LinkRemoteService {
     default Result<IPage<LinkPageRespDTO>> pageLink(LinkPageDTO linkPageDTO){
         Map<String, Object> map = new HashMap<>();
         map.put("gid", linkPageDTO.getGid());
+        //排序字段
+        map.put("orderTag", linkPageDTO.getOrderTag());
         //当前页
         map.put("current", linkPageDTO.getCurrent());
         //每页数

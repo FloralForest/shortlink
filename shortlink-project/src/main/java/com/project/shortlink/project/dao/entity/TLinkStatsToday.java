@@ -62,19 +62,19 @@ public class TLinkStatsToday extends BaseDO implements Serializable {
     private Date date;
 
     /**
-     * 今日PV
+     * 今日PV(访问量)
      */
     @TableField("today_pv")
     private Integer todayPv;
 
     /**
-     * 今日UV
+     * 今日UV(独立访客数)
      */
     @TableField("today_uv")
     private Integer todayUv;
 
     /**
-     * 今日IP数
+     * 今日IP数(独立IP数)
      */
     @TableField("today_uip")
     private Integer todayUip;

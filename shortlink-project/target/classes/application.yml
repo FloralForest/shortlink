@@ -45,8 +45,8 @@ short-link:
     locale:
       amap-key: 8593e7a96162641f142f53a419991cb4
 
-##mybatis日志
-#mybatis-plus:
-#  configuration:
-#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-#  mapper-locations: classpath:com/project/shortlink/admin/dao/mapper/xml/*.xml #扫描xml
+#mybatis日志
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  mapper-locations: classpath:com/project/shortlink/project/dao/mapper/xml/*.xml #扫描xml

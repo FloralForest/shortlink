@@ -15,4 +15,9 @@ public class LinkPageDTO extends Page<TLink> {
      * 分组标识，获得该组下的短链接
      */
     private String gid;
+
+    /**
+     * 排序标签
+     */
+    private String orderTag;
 }

@@ -40,6 +40,10 @@ rules:
           standard:
             shardingColumn: gid
             shardingAlgorithmName: link_stats_today_table_hash_mod
+    #ShardingSphere查询分片一致的两个表join操作时产生笛卡尔积的情况
+    #ShardingSphere框架的·绑定表·配置-去除笛卡尔积现象(例如使用多表联查真实数据只有两条，却显示多条相同数据的情况)
+    bindingTables:
+      - t_link, t_link_stats_today
     # 分片算法
     shardingAlgorithms:
       # 数据表分片算法

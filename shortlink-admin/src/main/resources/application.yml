@@ -28,8 +28,8 @@ spring:
       port: 6379
 #      password: 123456
 
-##mybatis日志
-#mybatis-plus:
-#  configuration:
-#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-#  mapper-locations: classpath:com/project/shortlink/admin/dao/mapper/xml/*.xml #扫描xml
+#mybatis日志
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  mapper-locations: classpath:com/project/shortlink/admin/dao/mapper/xml/*.xml #扫描xml

@@ -85,6 +85,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     private final TLinkAccessLogsMapper tLinkAccessLogsMapper;
     private final TLinkDeviceStatsMapper tLinkDeviceStatsMapper;
     private final TLinkNetworkStatsMapper tLinkNetworkStatsMapper;
+    private final TLinkStatsTodayMapper tLinkStatsTodayMapper;
 
     //高德获取ip密钥
     @Value("${short-link.stats.locale.amap-key}")
@@ -192,13 +193,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     //分页查询 配合DataBaseConfiguration工具类分页插件
     @Override
     public IPage<LinkPageRespDTO> pageLink(LinkPageDTO linkPageDTO) {
-        final LambdaQueryWrapper<TLink> lambdaQueryWrapper = new LambdaQueryWrapper<>();
-        lambdaQueryWrapper.eq(TLink::getGid, linkPageDTO.getGid())
-                .eq(TLink::getEnableStatus, 0)
-                .eq(TLink::getDelFlag, 0)
-                //默认根据创建时间排序
-                .orderByDesc(TLink::getCreateTime);
-        IPage<TLink> resultPage = baseMapper.selectPage(linkPageDTO, lambdaQueryWrapper);
+        IPage<TLink> resultPage = baseMapper.pageLink(linkPageDTO);
 
         return resultPage.convert(page -> {
             final LinkPageRespDTO result = BeanUtil.toBean(page, LinkPageRespDTO.class);
@@ -511,6 +506,17 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             tLinkAccessLogsMapper.insert(accessLogs);
             //link表修改历史pv、uv、uip
             baseMapper.incrementStats(gid, fullShortUrl, 1, aBoolean.get() ? 1 : 0, ipBoolean ? 1 : 0);
+            //”今日统计“
+            TLinkStatsToday statsToday = TLinkStatsToday
+                    .builder()
+                    .fullShortUrl(fullShortUrl)
+                    .gid(gid)
+                    .date(new Date())
+                    .todayPv(1)
+                    .todayUv(aBoolean.get() ? 1 : 0)
+                    .todayUip(ipBoolean ? 1 : 0)
+                    .build();
+            tLinkStatsTodayMapper.shortLinkStatsToday(statsToday);
         } catch (Throwable e) {
             log.error("短链接访问量统计异常", e);
         }

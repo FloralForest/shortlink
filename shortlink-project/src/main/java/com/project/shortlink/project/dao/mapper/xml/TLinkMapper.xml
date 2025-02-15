@@ -1,5 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.project.shortlink.project.dao.mapper.TLinkMapper">
+    <!--分页查询短链接以及today表的统计信息-->
+    <!--parameterType参数类型LinkPageDTO，resultType结果类型TLink-->
+<!--    <select id="pageLink" parameterType="com.project.shortlink.project.dto.req.LinkPageDTO"-->
+<!--            resultType="com.project.shortlink.project.dao.entity.TLink">-->
 
+<!--        SELECT l.*,-->
+<!--        COALESCE(lt.today_pv, 0) AS todayPv,-->
+<!--        COALESCE(lt.today_uv, 0) AS todayUv,-->
+<!--        COALESCE(lt.today_uip, 0) AS todayUip-->
+<!--        FROM t_link l LEFT JOIN t_link_stats_today lt-->
+<!--        ON l.gid = lt.gid AND l.full_short_url = lt.full_short_url AND lt.date = CURDATE()-->
+<!--        WHERE l.gid = #{gid} AND l.enable_status = 0 AND l.del_flag = 0-->
+<!--        &lt;!&ndash;排序规则&ndash;&gt;-->
+<!--        <choose>-->
+<!--            <when test="orderTag == 'todayPv'">-->
+<!--                ORDER BY todayPv DESC-->
+<!--            </when>-->
+<!--            <when test="orderTag == 'todayUv'">-->
+<!--                ORDER BY todayUv DESC-->
+<!--            </when>-->
+<!--            <when test="orderTag == 'todayUip'">-->
+<!--                ORDER BY todayUip DESC-->
+<!--            </when>-->
+<!--            <when test="orderTag == 'totalPv'">-->
+<!--                ORDER BY l.total_pv DESC-->
+<!--            </when>-->
+<!--            <when test="orderTag == 'totalUv'">-->
+<!--                ORDER BY l.total_uv DESC-->
+<!--            </when>-->
+<!--            <when test="orderTag == 'totalUip'">-->
+<!--                ORDER BY l.total_uip DESC-->
+<!--            </when>-->
+<!--            &lt;!&ndash;都不满足根据创建时间&ndash;&gt;-->
+<!--            <otherwise>-->
+<!--                ORDER BY l.create_time DESC-->
+<!--            </otherwise>-->
+<!--        </choose>-->
+<!--    </select>-->
 </mapper>
