@@ -3,6 +3,7 @@ package com.project.shortlink.project.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.project.shortlink.project.common.convention.result.Result;
 import com.project.shortlink.project.common.convention.result.Results;
+import com.project.shortlink.project.dto.req.LinkGroupStatsAccessRecordDTO;
 import com.project.shortlink.project.dto.req.LinkGroupStatsDTO;
 import com.project.shortlink.project.dto.req.LinkStatsAccessRecordDTO;
 import com.project.shortlink.project.dto.req.LinkStatsDTO;
@@ -42,5 +43,13 @@ public class LinkStatsController {
     @GetMapping("/api/shortlink/project/stats/group")
     public Result<LinkStatsRespDTO> groupShortLinkStats(LinkGroupStatsDTO linkGroupStatsDTO) {
         return Results.success(linkStatsService.groupShortLinkStats(linkGroupStatsDTO));
+    }
+
+    //访问分组短链接监控访问记录(日志) + 分页
+    @GetMapping("/api/shortlink/project/stats/group/lar")
+    public Result<IPage<LinkStatsAccessRecordRespDTO>> groupLinkAccessRecord(LinkGroupStatsAccessRecordDTO linkStatsDTO){
+        return Results.success(linkStatsService.groupLinkAccessRecord(linkStatsDTO))
+                .setCode("20000")
+                .setMessage("查询成功");
     }
 }

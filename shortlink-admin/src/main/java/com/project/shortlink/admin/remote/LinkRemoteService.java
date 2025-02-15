@@ -131,4 +131,15 @@ public interface LinkRemoteService {
         return JSON.parseObject(resultBodyStr, new TypeReference<>() {
         });
     }
+
+    //短链接监控访问记录(日志) + 分页
+    default Result<IPage<LinkStatsAccessRecordRespDTO>> groupLinkStatsAccessRecord(LinkGroupStatsAccessRecordDTO linkPageDTO){
+        Map<String, Object> map = BeanUtil.beanToMap(linkPageDTO,false,true);
+        map.remove("orders");
+        map.remove("records");
+        String resultPage = HttpUtil.get("http://localhost:8001/api/shortlink/project/stats/group/lar", map);
+        //解析成json字符串 隐式转换
+        return JSON.parseObject(resultPage, new TypeReference<>() {
+        });
+    }
 }

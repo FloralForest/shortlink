@@ -9,10 +9,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.project.shortlink.project.dao.entity.*;
 import com.project.shortlink.project.dao.mapper.*;
-import com.project.shortlink.project.dto.req.LinkGroupStatsDTO;
-import com.project.shortlink.project.dto.req.LinkStatsAccessRecordDTO;
-import com.project.shortlink.project.dto.req.LinkStatsAccessRecordQueryDTO;
-import com.project.shortlink.project.dto.req.LinkStatsDTO;
+import com.project.shortlink.project.dto.req.*;
 import com.project.shortlink.project.dto.resp.*;
 import com.project.shortlink.project.service.TLinkStatsService;
 import lombok.RequiredArgsConstructor;
@@ -262,7 +259,7 @@ public class TLinkStatsServiceImpl implements TLinkStatsService {
         //提供分页条件和查询条件
         IPage<TLinkAccessLogs> linkAccessLogsPage = tLinkAccessLogsMapper.selectPage(linkStatsDTO, queryWrapper);
         //把查询到的数据转成目标返回对象 TLinkAccessLogs -> LinkStatsAccessRecordRespDTO
-        final IPage<LinkStatsAccessRecordRespDTO> actualResult = linkAccessLogsPage.convert(each -> BeanUtil.toBean(each, LinkStatsAccessRecordRespDTO.class));
+        IPage<LinkStatsAccessRecordRespDTO> actualResult = linkAccessLogsPage.convert(each -> BeanUtil.toBean(each, LinkStatsAccessRecordRespDTO.class));
         //获得用户集合
         List<String> userAccessLogsList = actualResult.getRecords().stream().map(LinkStatsAccessRecordRespDTO::getUser).toList();
         final LinkStatsAccessRecordQueryDTO accessLogsQueryDTO = LinkStatsAccessRecordQueryDTO
@@ -450,5 +447,39 @@ public class TLinkStatsServiceImpl implements TLinkStatsService {
                 .deviceStats(deviceStats)
                 .networkStats(networkStats)
                 .build();
+    }
+
+    //访问分组短链接监控访问记录(日志) + 分页
+    @Override
+    public IPage<LinkStatsAccessRecordRespDTO> groupLinkAccessRecord(LinkGroupStatsAccessRecordDTO linkStatsDTO) {
+        final LambdaQueryWrapper<TLinkAccessLogs> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper
+                .eq(TLinkAccessLogs::getGid, linkStatsDTO.getGid())
+                .between(TLinkAccessLogs::getCreateTime, linkStatsDTO.getStartDate(), linkStatsDTO.getEndDate())
+                .eq(TLinkAccessLogs::getDelFlag,0)
+                .orderByDesc(TLinkAccessLogs::getCreateTime);
+        //提供分页条件和查询条件
+        IPage<TLinkAccessLogs> linkAccessLogsPage = tLinkAccessLogsMapper.selectPage(linkStatsDTO, queryWrapper);
+        //把查询到的数据转成目标返回对象 TLinkAccessLogs -> LinkStatsAccessRecordRespDTO
+        IPage<LinkStatsAccessRecordRespDTO> actualResult = linkAccessLogsPage.convert(each -> BeanUtil.toBean(each, LinkStatsAccessRecordRespDTO.class));
+        //获得用户集合
+        List<String> userAccessLogsList = actualResult.getRecords().stream().map(LinkStatsAccessRecordRespDTO::getUser).toList();
+        //查询新老访客
+        List<Map<String, Object>> uvTypeList = tLinkAccessLogsMapper.selectGroupUvTypeByUsers(
+                linkStatsDTO.getGid(),
+                linkStatsDTO.getStartDate(),
+                linkStatsDTO.getEndDate(),
+                userAccessLogsList
+        );
+        actualResult.getRecords().forEach(each ->{
+            final String uvType = uvTypeList.stream()
+                    .filter(item -> Objects.equals(each.getUser(), item.get("user")))
+                    .findFirst()
+                    .map(item -> item.get("uvType"))
+                    .map(Object::toString)
+                    .orElse("旧访客");
+            each.setUvType(uvType);
+        });
+        return actualResult;
     }
 }
