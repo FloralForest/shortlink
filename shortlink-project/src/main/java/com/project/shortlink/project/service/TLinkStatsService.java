@@ -11,7 +11,7 @@ import com.project.shortlink.project.dto.resp.LinkStatsRespDTO;
  */
 public interface TLinkStatsService {
 
-    //短链接监控所有数据
+    //单个短链接监控的所有数据
     LinkStatsRespDTO oneLinkStats(LinkStatsDTO linkStatsDTO);
 
     //短链接监控访问记录(日志) + 分页

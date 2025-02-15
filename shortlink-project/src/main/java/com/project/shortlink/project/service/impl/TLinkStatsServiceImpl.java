@@ -35,7 +35,7 @@ public class TLinkStatsServiceImpl implements TLinkStatsService {
     private final TLinkDeviceStatsMapper tLinkDeviceStatsMapper;
     private final TLinkNetworkStatsMapper tLinkNetworkStatsMapper;
 
-    //短链接监控所有数据
+    //单个短链接监控的所有数据
     @Override
     public LinkStatsRespDTO oneLinkStats(LinkStatsDTO linkStatsDTO) {
         //没有记录返回空
@@ -232,6 +232,9 @@ public class TLinkStatsServiceImpl implements TLinkStatsService {
         });
         return LinkStatsRespDTO
                 .builder()
+                .pv(dailyList.stream().mapToInt(LinkStatsAccessDailyRespDTO::getPv).sum())
+                .uv(dailyList.stream().mapToInt(LinkStatsAccessDailyRespDTO::getUv).sum())
+                .uip(dailyList.stream().mapToInt(LinkStatsAccessDailyRespDTO::getUip).sum())
                 .daily(dailyList)
                 .localeCnStats(localeCNList)
                 .hourStats(hourList)

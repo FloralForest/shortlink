@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class LinkStatsController {
     private final TLinkStatsService linkStatsService;
 
-    //短链接监控所有数据
+    //单个短链接监控的所有数据
     @GetMapping("/api/shortlink/project/stats")
     public Result<LinkStatsRespDTO> linkStats(LinkStatsDTO linkStatsDTO){
         return Results.success(linkStatsService.oneLinkStats(linkStatsDTO))
