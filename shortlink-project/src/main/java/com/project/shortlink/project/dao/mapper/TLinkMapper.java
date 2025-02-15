@@ -32,12 +32,12 @@ public interface TLinkMapper extends BaseMapper<TLink> {
             "ON l.gid = lt.gid AND l.full_short_url = lt.full_short_url AND lt.date = CURDATE() " +
             "WHERE l.gid = #{lp.gid} AND l.enable_status = 0 AND l.del_flag = 0 " +
             "<choose>" +
-            "  <when test='lp.orderTag == \"todayPv\"'>ORDER BY todayPv DESC</when>" +
-            "  <when test='lp.orderTag == \"todayUv\"'>ORDER BY todayUv DESC</when>" +
-            "  <when test='lp.orderTag == \"todayUip\"'>ORDER BY todayUip DESC</when>" +
-            "  <when test='lp.orderTag == \"totalPv\"'>ORDER BY l.total_pv DESC</when>" +
-            "  <when test='lp.orderTag == \"totalUv\"'>ORDER BY l.total_uv DESC</when>" +
-            "  <when test='lp.orderTag == \"totalUip\"'>ORDER BY l.total_uip DESC</when>" +
+            "  <when test='lp.orderTag != null and lp.orderTag == \"todayPv\"'>ORDER BY todayPv DESC</when>" +
+            "  <when test='lp.orderTag != null and lp.orderTag == \"todayUv\"'>ORDER BY todayUv DESC</when>" +
+            "  <when test='lp.orderTag != null and lp.orderTag == \"todayUip\"'>ORDER BY todayUip DESC</when>" +
+            "  <when test='lp.orderTag != null and lp.orderTag == \"totalPv\"'>ORDER BY l.total_pv DESC</when>" +
+            "  <when test='lp.orderTag != null and lp.orderTag == \"totalUv\"'>ORDER BY l.total_uv DESC</when>" +
+            "  <when test='lp.orderTag != null and lp.orderTag == \"totalUip\"'>ORDER BY l.total_uip DESC</when>" +
             "  <otherwise>ORDER BY l.create_time DESC</otherwise>" +
             "</choose>" +
             "</script>")
