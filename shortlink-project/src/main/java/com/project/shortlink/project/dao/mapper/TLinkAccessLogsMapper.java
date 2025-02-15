@@ -2,6 +2,8 @@ package com.project.shortlink.project.dao.mapper;
 
 import com.project.shortlink.project.dao.entity.TLinkAccessLogs;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.project.shortlink.project.dao.entity.TLinkAccessStats;
+import com.project.shortlink.project.dto.req.LinkGroupStatsDTO;
 import com.project.shortlink.project.dto.req.LinkStatsAccessRecordQueryDTO;
 import com.project.shortlink.project.dto.req.LinkStatsDTO;
 import org.apache.ibatis.annotations.Mapper;
@@ -71,4 +73,34 @@ public interface TLinkAccessLogsMapper extends BaseMapper<TLinkAccessLogs> {
             "    </script>"
     )
     List<Map<String, Object>> selectUvTypeByUsers(@Param("param") LinkStatsAccessRecordQueryDTO accessLogsQueryDTO);
+
+    //根据分组获取指定日期内高频访问IP数据
+    @Select("SELECT " +
+            "    ip, " +
+            "    COUNT(ip) AS count " +
+            "FROM " +
+            "    t_link_access_logs " +
+            "WHERE " +
+            "    gid = #{param.gid} " +
+            "    AND create_time BETWEEN #{param.startDate} and #{param.endDate} " +
+            "GROUP BY " +
+            "    gid, ip " +
+            "ORDER BY " +
+            "    count DESC " +
+            "LIMIT 5;")
+    List<HashMap<String, Object>> listTopIpByGroup(@Param("param") LinkGroupStatsDTO linkGroupStatsDTO);
+
+    //根据分组获取指定日期内PV、UV、UIP数据
+    @Select("SELECT " +
+            "    COUNT(user) AS pv, " +
+            "    COUNT(DISTINCT user) AS uv, " +
+            "    COUNT(DISTINCT ip) AS uip " +
+            "FROM " +
+            "    t_link_access_logs " +
+            "WHERE " +
+            "    gid = #{param.gid} " +
+            "    AND create_time BETWEEN #{param.startDate} and #{param.endDate} " +
+            "GROUP BY " +
+            "    gid;")
+    TLinkAccessStats findPvUvUidStatsByGroup(@Param("param") LinkGroupStatsDTO linkGroupStatsDTO);
 }

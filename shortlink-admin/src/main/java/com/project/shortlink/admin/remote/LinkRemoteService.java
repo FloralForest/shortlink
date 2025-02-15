@@ -124,4 +124,11 @@ public interface LinkRemoteService {
         return JSON.parseObject(resultPage, new TypeReference<>() {
         });
     }
+
+    //访问分组短链接指定时间内监控数据
+    default Result<LinkStatsRespDTO> groupShortLinkStats(LinkGroupStatsDTO linkGroupStatsDTO) {
+        String resultBodyStr = HttpUtil.get("http://localhost:8001/api/shortlink/project/stats/group", BeanUtil.beanToMap(linkGroupStatsDTO));
+        return JSON.parseObject(resultBodyStr, new TypeReference<>() {
+        });
+    }
 }

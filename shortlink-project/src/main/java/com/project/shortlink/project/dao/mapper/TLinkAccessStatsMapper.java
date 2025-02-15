@@ -2,6 +2,7 @@ package com.project.shortlink.project.dao.mapper;
 
 import com.project.shortlink.project.dao.entity.TLinkAccessStats;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.project.shortlink.project.dto.req.LinkGroupStatsDTO;
 import com.project.shortlink.project.dto.req.LinkStatsDTO;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -54,4 +55,45 @@ public interface TLinkAccessStatsMapper extends BaseMapper<TLinkAccessStats> {
             "GROUP BY " +
             "full_short_url, gid, weekday;")
     List<TLinkAccessStats> listWeekdayStatsByShortLink(@Param("param") LinkStatsDTO requestParam);
+
+    //根据分组获取指定日期内基础监控数据
+    @Select("SELECT " +
+            "    date, " +
+            "    SUM(pv) AS pv, " +
+            "    SUM(uv) AS uv, " +
+            "    SUM(uip) AS uip " +
+            "FROM " +
+            "    t_link_access_stats " +
+            "WHERE " +
+            "    gid = #{param.gid} " +
+            "    AND date BETWEEN #{param.startDate} and #{param.endDate} " +
+            "GROUP BY " +
+            "    gid, date;")
+    List<TLinkAccessStats> listStatsByGroup(@Param("param") LinkGroupStatsDTO linkGroupStatsDTO);
+
+    //根据分组获取指定日期内小时基础监控数据
+    @Select("SELECT " +
+            "    hour, " +
+            "    SUM(pv) AS pv " +
+            "FROM " +
+            "    t_link_access_stats " +
+            "WHERE " +
+            "    gid = #{param.gid} " +
+            "    AND date BETWEEN #{param.startDate} and #{param.endDate} " +
+            "GROUP BY " +
+            "    gid, hour;")
+    List<TLinkAccessStats> listHourStatsByGroup(@Param("param") LinkGroupStatsDTO linkGroupStatsDTO);
+
+    //根据分组获取指定日期内小时基础监控数据
+    @Select("SELECT " +
+            "    weekday, " +
+            "    SUM(pv) AS pv " +
+            "FROM " +
+            "    t_link_access_stats " +
+            "WHERE " +
+            "    gid = #{param.gid} " +
+            "    AND date BETWEEN #{param.startDate} and #{param.endDate} " +
+            "GROUP BY " +
+            "    gid, weekday;")
+    List<TLinkAccessStats> listWeekdayStatsByGroup(@Param("param") LinkGroupStatsDTO linkGroupStatsDTO);
 }

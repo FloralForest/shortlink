@@ -3,6 +3,7 @@ package com.project.shortlink.project.dao.mapper;
 import com.project.shortlink.project.dao.entity.TLinkDeviceStats;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.project.shortlink.project.dao.entity.TLinkOsStats;
+import com.project.shortlink.project.dto.req.LinkGroupStatsDTO;
 import com.project.shortlink.project.dto.req.LinkStatsDTO;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -37,4 +38,18 @@ public interface TLinkDeviceStatsMapper extends BaseMapper<TLinkDeviceStats> {
             "GROUP BY " +
             "full_short_url, gid, device;")
     List<TLinkDeviceStats> listDeviceStatsByShortLink(@Param("param") LinkStatsDTO requestParam);
+
+    //根据分组获取指定日期内访问设备监控数据
+
+    @Select("SELECT " +
+            "    device, " +
+            "    SUM(cnt) AS cnt " +
+            "FROM " +
+            "    t_link_device_stats " +
+            "WHERE " +
+            "    gid = #{param.gid} " +
+            "    AND date BETWEEN #{param.startDate} and #{param.endDate} " +
+            "GROUP BY " +
+            "    gid, device;")
+    List<TLinkDeviceStats> listDeviceStatsByGroup(@Param("param") LinkGroupStatsDTO linkGroupStatsDTO);
 }

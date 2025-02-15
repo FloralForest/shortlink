@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.project.shortlink.admin.common.convention.result.Result;
 import com.project.shortlink.admin.common.convention.result.Results;
 import com.project.shortlink.admin.remote.LinkRemoteService;
+import com.project.shortlink.admin.remote.dto.req.LinkGroupStatsDTO;
 import com.project.shortlink.admin.remote.dto.req.LinkStatsAccessRecordDTO;
 import com.project.shortlink.admin.remote.dto.req.LinkStatsDTO;
 import com.project.shortlink.admin.remote.dto.resp.LinkStatsAccessRecordRespDTO;
@@ -33,4 +34,10 @@ public class LinkStatsController {
         return linkRemoteService.linkStatsAccessRecord(linkStatsDTO);
     }
 
+    ////分数监控相关数据
+    //访问分组短链接指定时间内监控数据
+    @GetMapping("/api/shortlink/admin/stats/group")
+    public Result<LinkStatsRespDTO> groupShortLinkStats(LinkGroupStatsDTO linkGroupStatsDTO) {
+        return linkRemoteService.groupShortLinkStats(linkGroupStatsDTO);
+    }
 }
