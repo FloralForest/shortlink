@@ -3,9 +3,11 @@ package com.project.shortlink.project.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.project.shortlink.project.common.convention.result.Result;
 import com.project.shortlink.project.common.convention.result.Results;
+import com.project.shortlink.project.dto.req.LinkBatchCreateDTO;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
 import com.project.shortlink.project.dto.req.LinkPageDTO;
 import com.project.shortlink.project.dto.req.LinkUpdateDTO;
+import com.project.shortlink.project.dto.resp.LinkBatchCreateRespDTO;
 import com.project.shortlink.project.dto.resp.LinkCountRespDTO;
 import com.project.shortlink.project.dto.resp.LinkCreateRespDTO;
 import com.project.shortlink.project.dto.resp.LinkPageRespDTO;
@@ -40,6 +42,12 @@ public class TLinkController {
         return Results.success(tLinkService.createLink(linkCreateDTO))
                 .setCode("20000")
                 .setMessage("短链接创建成功");
+    }
+    //批量创建短链接
+    @PostMapping("/api/shortlink/project/link/createLink/batch")
+    //@RequestBody 将 HTTP 请求体（如 JSON、XML）中的数据转换为 Java 对象。
+    public Result<LinkBatchCreateRespDTO> batchCreateShortLink(@RequestBody LinkBatchCreateDTO linkBatchCreateDTO) {
+        return Results.success(tLinkService.batchCreateShortLink(linkBatchCreateDTO));
     }
 
     //分页

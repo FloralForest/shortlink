@@ -3,9 +3,11 @@ package com.project.shortlink.project.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.project.shortlink.project.dao.entity.TLink;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.project.shortlink.project.dto.req.LinkBatchCreateDTO;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
 import com.project.shortlink.project.dto.req.LinkPageDTO;
 import com.project.shortlink.project.dto.req.LinkUpdateDTO;
+import com.project.shortlink.project.dto.resp.LinkBatchCreateRespDTO;
 import com.project.shortlink.project.dto.resp.LinkCountRespDTO;
 import com.project.shortlink.project.dto.resp.LinkCreateRespDTO;
 import com.project.shortlink.project.dto.resp.LinkPageRespDTO;
@@ -27,9 +29,14 @@ import java.util.List;
 public interface TLinkService extends IService<TLink> {
 
     /**
-     * 创建短板链接
+     * 创建短链接
      */
     LinkCreateRespDTO createLink(LinkCreateDTO linkCreateDTO);
+
+    /**
+     * 批量创建短链接
+     */
+    LinkBatchCreateRespDTO batchCreateShortLink(LinkBatchCreateDTO linkBatchCreateDTO);
 
     /**
      * 分页查询

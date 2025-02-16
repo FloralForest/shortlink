@@ -9,10 +9,7 @@ import com.project.shortlink.admin.common.convention.result.Result;
 import com.project.shortlink.admin.remote.dto.req.RecycleBinSaveDTO;
 import com.project.shortlink.admin.dto.resp.LinkCountRespDTO;
 import com.project.shortlink.admin.remote.dto.req.*;
-import com.project.shortlink.admin.remote.dto.resp.LinkCreateRespDTO;
-import com.project.shortlink.admin.remote.dto.resp.LinkPageRespDTO;
-import com.project.shortlink.admin.remote.dto.resp.LinkStatsAccessRecordRespDTO;
-import com.project.shortlink.admin.remote.dto.resp.LinkStatsRespDTO;
+import com.project.shortlink.admin.remote.dto.resp.*;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -32,6 +29,13 @@ public interface LinkRemoteService {
                 JSON.toJSONString(linkCreateDTO));
         //解析成json字符串 隐式转换
         return JSON.parseObject(resultBodyStr,new TypeReference<>() {
+        });
+    }
+    // 批量创建短链接
+
+    default Result<LinkBatchCreateRespDTO> batchCreateLink(LinkBatchCreateDTO requestParam) {
+        String resultBodyStr = HttpUtil.post("http://127.0.0.1:8001/api/shortlink/project/link/createLink/batch", JSON.toJSONString(requestParam));
+        return JSON.parseObject(resultBodyStr, new TypeReference<>() {
         });
     }
 

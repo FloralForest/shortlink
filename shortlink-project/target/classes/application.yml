@@ -39,8 +39,12 @@ spring:
   web:
     resources:
       static-locations: classpath:/static/
-#高德地图ip服务密钥
+#链接相关配置
 short-link:
+  #配置默认域名
+  domain:
+    defaull: localhost:8001
+  #高德地图ip服务密钥
   stats:
     locale:
       amap-key: 8593e7a96162641f142f53a419991cb4

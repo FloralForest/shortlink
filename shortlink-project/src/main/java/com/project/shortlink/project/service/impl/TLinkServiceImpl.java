@@ -17,12 +17,11 @@ import com.project.shortlink.project.common.convention.exception.ServiceExceptio
 import com.project.shortlink.project.common.enums.VailDateTypeEnum;
 import com.project.shortlink.project.dao.entity.*;
 import com.project.shortlink.project.dao.mapper.*;
+import com.project.shortlink.project.dto.req.LinkBatchCreateDTO;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
 import com.project.shortlink.project.dto.req.LinkPageDTO;
 import com.project.shortlink.project.dto.req.LinkUpdateDTO;
-import com.project.shortlink.project.dto.resp.LinkCountRespDTO;
-import com.project.shortlink.project.dto.resp.LinkCreateRespDTO;
-import com.project.shortlink.project.dto.resp.LinkPageRespDTO;
+import com.project.shortlink.project.dto.resp.*;
 import com.project.shortlink.project.service.TLinkService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.project.shortlink.project.util.HashUtil;
@@ -192,6 +191,40 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
 
         //返回生成的链接
         return shorUri;
+    }
+
+    //批量创建短链接
+    @Override
+    public LinkBatchCreateRespDTO batchCreateShortLink(LinkBatchCreateDTO linkBatchCreateDTO) {
+        //传过来的url集合与描述集合
+        final List<String> originUrls = linkBatchCreateDTO.getOriginUrls();
+        final List<String> describes = linkBatchCreateDTO.getDescribes();
+        final List<LinkBaseInfoRespDTO> linkBaseInfoRespS = new ArrayList<>();
+        //集合里的数据逐条操作转化
+        for (int i = 0; i < originUrls.size(); i++) {
+            try {
+                final LinkCreateDTO linkCreateDTO = BeanUtil.toBean(linkBatchCreateDTO, LinkCreateDTO.class);
+                linkCreateDTO.setOriginUrl(originUrls.get(i));
+                linkCreateDTO.setDescribe(describes.get(i));
+                //本质创建单个短链接
+                final LinkCreateRespDTO link = createLink(linkCreateDTO);
+                final LinkBaseInfoRespDTO infoRespDTO = LinkBaseInfoRespDTO
+                        .builder()
+                        .fullShortUrl(link.getFullShortUrl())
+                        .originUrl(link.getOriginUrl())
+                        .describe(describes.get(i))
+                        .build();
+                linkBaseInfoRespS.add(infoRespDTO);
+            }catch (Throwable e){
+                log.error("批量创建短链接失败——>{}", originUrls.get(i));
+            }
+        }
+
+        return LinkBatchCreateRespDTO
+                .builder()
+                .total(linkBaseInfoRespS.size())
+                .baseLinkInfos(linkBaseInfoRespS)
+                .build();
     }
 
     //分页查询 配合DataBaseConfiguration工具类分页插件
