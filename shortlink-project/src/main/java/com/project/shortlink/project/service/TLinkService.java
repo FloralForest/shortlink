@@ -3,6 +3,7 @@ package com.project.shortlink.project.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.project.shortlink.project.dao.entity.TLink;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.project.shortlink.project.dto.biz.LinkStatsRecordDTO;
 import com.project.shortlink.project.dto.req.LinkBatchCreateDTO;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
 import com.project.shortlink.project.dto.req.LinkPageDTO;
@@ -57,4 +58,10 @@ public interface TLinkService extends IService<TLink> {
      * 实现短链接跳转(重定向到原链接)
      */
     void linkUri(String linkUri,  ServletRequest request, ServletResponse response);
+
+    /**
+     * 延迟队列调用
+     * 短链接统计
+     */
+    void shortLinkStats(String fullShortUrl, String gid, LinkStatsRecordDTO shortLinkStatsRecord);
 }

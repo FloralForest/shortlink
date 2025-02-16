@@ -156,4 +156,9 @@ public class TLink extends BaseDO implements Serializable {
     @TableField(exist = false)
     private Integer todayUip;
 
+    /**
+     * 删除时间
+     */
+    @TableField("del_time")
+    private Long delTime;
 }

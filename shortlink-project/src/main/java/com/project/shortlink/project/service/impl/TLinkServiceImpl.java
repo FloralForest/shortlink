@@ -1,6 +1,7 @@
 package com.project.shortlink.project.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.ArrayUtil;
@@ -17,11 +18,14 @@ import com.project.shortlink.project.common.convention.exception.ServiceExceptio
 import com.project.shortlink.project.common.enums.VailDateTypeEnum;
 import com.project.shortlink.project.dao.entity.*;
 import com.project.shortlink.project.dao.mapper.*;
+import com.project.shortlink.project.dto.biz.LinkStatsRecordDTO;
 import com.project.shortlink.project.dto.req.LinkBatchCreateDTO;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
 import com.project.shortlink.project.dto.req.LinkPageDTO;
 import com.project.shortlink.project.dto.req.LinkUpdateDTO;
 import com.project.shortlink.project.dto.resp.*;
+import com.project.shortlink.project.mq.producer.DelayShortLinkStatsProducer;
+import com.project.shortlink.project.service.LinkStatsTodayService;
 import com.project.shortlink.project.service.TLinkService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.project.shortlink.project.util.HashUtil;
@@ -39,6 +43,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
+import org.redisson.api.RReadWriteLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
@@ -86,6 +91,9 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     private final TLinkNetworkStatsMapper tLinkNetworkStatsMapper;
     private final TLinkStatsTodayMapper tLinkStatsTodayMapper;
 
+    private final LinkStatsTodayService linkStatsTodayService;
+    private final DelayShortLinkStatsProducer delayShortLinkStatsProducer;
+
     //高德获取ip密钥
     @Value("${short-link.stats.locale.amap-key}")
     private String localeKey;
@@ -114,6 +122,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 .totalPv(0)
                 .totalUv(0)
                 .totalUip(0)
+                .delTime(0L)
                 //添加短链
                 .shortUri(suffix)
                 .enableStatus(0)
@@ -215,7 +224,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                         .describe(describes.get(i))
                         .build();
                 linkBaseInfoRespS.add(infoRespDTO);
-            }catch (Throwable e){
+            } catch (Throwable e) {
                 log.error("批量创建短链接失败——>{}", originUrls.get(i));
             }
         }
@@ -247,6 +256,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 .lambda()
                 .in(TLink::getGid, gidNumber)
                 .eq(TLink::getEnableStatus, 0)
+                .eq(TLink::getDelTime, 0L)
+                .eq(TLink::getDelFlag, 0)
                 .groupBy(TLink::getGid);
 
         final List<Map<String, Object>> list = baseMapper.selectMaps(wrapper);
@@ -260,8 +271,9 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     public void linkUpdate(LinkUpdateDTO linkUpdateDTO) {
         //短链分组问题
         final LambdaQueryWrapper<TLink> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+        //前端传修改前的原来的gid(getOriginGid)查询数据，拿修改后的gid(linkUpdateDTO.getGid())会查不到数据
         lambdaQueryWrapper
-                .eq(TLink::getGid, linkUpdateDTO.getGid())
+                .eq(TLink::getGid, linkUpdateDTO.getOriginGid())
                 .eq(TLink::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
                 .eq(TLink::getDelFlag, 0)
                 .eq(TLink::getEnableStatus, 0);
@@ -269,19 +281,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         if (selectOne == null) {
             throw new ClientException("短链接不存在");
         }
-        final TLink tLink = TLink
-                .builder()
-                .domain(selectOne.getDomain())
-                .shortUri(selectOne.getShortUri())
-                .clickNum(selectOne.getClickNum())
-                .favicon(selectOne.getFavicon())
-                .createdType(selectOne.getCreatedType())
-                .gid(linkUpdateDTO.getGid())
-                .originUrl(linkUpdateDTO.getOriginUrl())
-                .describe(linkUpdateDTO.getDescribe())
-                .validDateType(linkUpdateDTO.getValidDateType())
-                .validDate(linkUpdateDTO.getValidDate())
-                .build();
+        //若gid不变则正常修改
         if (Objects.equals(selectOne.getGid(), linkUpdateDTO.getGid())) {
             //短链信息修改
             LambdaUpdateWrapper<TLink> lambdaUpdateWrapper = new LambdaUpdateWrapper<>();
@@ -292,17 +292,177 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     .eq(TLink::getDelFlag, 0)
                     .set(Objects.equals(linkUpdateDTO.getValidDateType(), VailDateTypeEnum.PERMANENT.getType()),
                             TLink::getValidDate, null);
+            final TLink tLink = TLink
+                    .builder()
+                    .domain(selectOne.getDomain())
+                    .shortUri(selectOne.getShortUri())
+                    .clickNum(selectOne.getClickNum())
+                    .favicon(selectOne.getFavicon())
+                    .createdType(selectOne.getCreatedType())
+                    .gid(linkUpdateDTO.getGid())
+                    .originUrl(linkUpdateDTO.getOriginUrl())
+                    .describe(linkUpdateDTO.getDescribe())
+                    .validDateType(linkUpdateDTO.getValidDateType())
+                    .validDate(linkUpdateDTO.getValidDate())
+                    .build();
             //修改根据lambdaUpdateWrapper条件查询到的数据
             baseMapper.update(tLink, lambdaUpdateWrapper);
         } else {
-            LambdaUpdateWrapper<TLink> lambdaWrapper = new LambdaUpdateWrapper<>();
-            lambdaWrapper
-                    .eq(TLink::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
-                    .eq(TLink::getGid, selectOne.getGid())
-                    .eq(TLink::getEnableStatus, 0)
-                    .eq(TLink::getDelFlag, 0);
-            baseMapper.delete(lambdaWrapper);
-            baseMapper.insert(tLink);
+            //引入延迟队列
+            RReadWriteLock readWriteLock = redissonClient.getReadWriteLock(String.format(LOCK_GID_UPDATE_KEY, linkUpdateDTO.getFullShortUrl()));
+            RLock rLock = readWriteLock.writeLock();
+            if (!rLock.tryLock()) {
+                throw new ServiceException("短链接正在被访问，请稍后再试...");
+            }
+            try {
+                LambdaUpdateWrapper<TLink> lambdaUpdateWrapper = new LambdaUpdateWrapper<>();
+                lambdaUpdateWrapper
+                        .eq(TLink::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
+                        .eq(TLink::getGid, selectOne.getGid())
+                        .eq(TLink::getEnableStatus, 0)
+                        .eq(TLink::getDelFlag, 0);
+                //逻辑删除原表数据
+                TLink delShortLinkDO = TLink.builder()
+                        .delTime(System.currentTimeMillis())
+                        .build();
+                delShortLinkDO.setDelFlag(1);
+                baseMapper.update(delShortLinkDO, lambdaUpdateWrapper);
+                //向新表添加数据
+                final TLink tLink = TLink
+                        .builder()
+                        .domain(linkUpdateDTO.getDomain() != null ? linkUpdateDTO.getDomain() + ":8001" : shortLinkDomain)
+                        .originUrl(linkUpdateDTO.getOriginUrl())
+                        .gid(linkUpdateDTO.getGid())
+                        .createdType(selectOne.getCreatedType())
+                        .validDateType(linkUpdateDTO.getValidDateType())
+                        .validDate(linkUpdateDTO.getValidDate())
+                        .describe(linkUpdateDTO.getDescribe())
+                        .favicon(this.getFavicon(linkUpdateDTO.getOriginUrl()))
+                        .totalPv(selectOne.getTotalPv())
+                        .totalUv(selectOne.getTotalUv())
+                        .totalUip(selectOne.getTotalUip())
+                        .delTime(0L)
+                        //添加短链
+                        .shortUri(selectOne.getShortUri())
+                        .enableStatus(selectOne.getEnableStatus())
+                        //完整链接(域名+生成的短链接)
+                        .fullShortUrl(selectOne.getFullShortUrl())
+                        .build();
+                baseMapper.insert(tLink);
+                //查询该短链接基础统计信息
+                LambdaQueryWrapper<TLinkStatsToday> statsTodayQueryWrapper = new LambdaQueryWrapper<>();
+                statsTodayQueryWrapper
+                        .eq(TLinkStatsToday::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
+                        .eq(TLinkStatsToday::getGid, selectOne.getGid())
+                        .eq(TLinkStatsToday::getDelFlag, 0);
+                List<TLinkStatsToday> linkStatsTodayDOList = tLinkStatsTodayMapper.selectList(statsTodayQueryWrapper);
+                //若不为空删除gid添加新的gid
+                if (CollUtil.isNotEmpty(linkStatsTodayDOList)) {
+                    tLinkStatsTodayMapper.deleteBatchIds(linkStatsTodayDOList.stream()
+                            .map(TLinkStatsToday::getId)
+                            .toList()
+                    );
+                    linkStatsTodayDOList.forEach(each -> each.setGid(linkUpdateDTO.getGid()));
+                    linkStatsTodayService.saveBatch(linkStatsTodayDOList);
+                }
+                //处理关联表gid
+                LambdaQueryWrapper<TLinkGoto> linkGotoQueryWrapper = new LambdaQueryWrapper<>();
+                linkGotoQueryWrapper
+                        .eq(TLinkGoto::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
+                        .eq(TLinkGoto::getGid, linkUpdateDTO.getGid());
+                TLinkGoto shortLinkGotoDO = tLinkGotoMapper.selectOne(linkGotoQueryWrapper);
+                tLinkGotoMapper.deleteById(shortLinkGotoDO.getId());
+                shortLinkGotoDO.setGid(linkUpdateDTO.getGid());
+                tLinkGotoMapper.insert(shortLinkGotoDO);
+                //处理用户访问表gid
+                LambdaUpdateWrapper<TLinkAccessStats> linkAccessStatsUpdateWrapper = new LambdaUpdateWrapper<>();
+                linkAccessStatsUpdateWrapper
+                        .eq(TLinkAccessStats::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
+                        .eq(TLinkAccessStats::getGid, selectOne.getGid())
+                        .eq(TLinkAccessStats::getDelFlag, 0);
+                TLinkAccessStats linkAccessStatsDO = TLinkAccessStats.builder()
+                        .gid(linkUpdateDTO.getGid())
+                        .build();
+                tLinkAccessStatsMapper.update(linkAccessStatsDO, linkAccessStatsUpdateWrapper);
+                //处理地区表gid
+                LambdaUpdateWrapper<TLinkLocaleStats> linkLocaleStatsUpdateWrapper = new LambdaUpdateWrapper<>();
+                linkLocaleStatsUpdateWrapper
+                        .eq(TLinkLocaleStats::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
+                        .eq(TLinkLocaleStats::getGid, selectOne.getGid())
+                        .eq(TLinkLocaleStats::getDelFlag, 0);
+                TLinkLocaleStats linkLocaleStatsDO = TLinkLocaleStats.builder()
+                        .gid(linkUpdateDTO.getGid())
+                        .build();
+                tLinkLocaleStatsMapper.update(linkLocaleStatsDO, linkLocaleStatsUpdateWrapper);
+                //处理操作系统表gid
+                LambdaUpdateWrapper<TLinkOsStats> linkOsStatsUpdateWrapper = new LambdaUpdateWrapper<>();
+                linkOsStatsUpdateWrapper
+                        .eq(TLinkOsStats::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
+                        .eq(TLinkOsStats::getGid, selectOne.getGid())
+                        .eq(TLinkOsStats::getDelFlag, 0);
+                TLinkOsStats linkOsStatsDO = TLinkOsStats.builder()
+                        .gid(linkUpdateDTO.getGid())
+                        .build();
+                tLinkOsStatsMapper.update(linkOsStatsDO, linkOsStatsUpdateWrapper);
+                //处理浏览器表gid
+                LambdaUpdateWrapper<TLinkBrowserStats> linkBrowserStatsUpdateWrapper = new LambdaUpdateWrapper<>();
+                linkBrowserStatsUpdateWrapper
+                        .eq(TLinkBrowserStats::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
+                        .eq(TLinkBrowserStats::getGid, selectOne.getGid())
+                        .eq(TLinkBrowserStats::getDelFlag, 0);
+                TLinkBrowserStats linkBrowserStatsDO = TLinkBrowserStats.builder()
+                        .gid(linkUpdateDTO.getGid())
+                        .build();
+                tLinkBrowserStatsMapper.update(linkBrowserStatsDO, linkBrowserStatsUpdateWrapper);
+                //处理设备表gid
+                LambdaUpdateWrapper<TLinkDeviceStats> linkDeviceStatsUpdateWrapper = new LambdaUpdateWrapper<>();
+                linkDeviceStatsUpdateWrapper
+                        .eq(TLinkDeviceStats::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
+                        .eq(TLinkDeviceStats::getGid, selectOne.getGid())
+                        .eq(TLinkDeviceStats::getDelFlag, 0);
+                TLinkDeviceStats linkDeviceStatsDO = TLinkDeviceStats.builder()
+                        .gid(linkUpdateDTO.getGid())
+                        .build();
+                tLinkDeviceStatsMapper.update(linkDeviceStatsDO, linkDeviceStatsUpdateWrapper);
+                //处理网络类型表gid
+                LambdaUpdateWrapper<TLinkNetworkStats> linkNetworkStatsUpdateWrapper = new LambdaUpdateWrapper<>();
+                linkNetworkStatsUpdateWrapper
+                        .eq(TLinkNetworkStats::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
+                        .eq(TLinkNetworkStats::getGid, selectOne.getGid())
+                        .eq(TLinkNetworkStats::getDelFlag, 0);
+                TLinkNetworkStats linkNetworkStatsDO = TLinkNetworkStats.builder()
+                        .gid(linkUpdateDTO.getGid())
+                        .build();
+                tLinkNetworkStatsMapper.update(linkNetworkStatsDO, linkNetworkStatsUpdateWrapper);
+                //处理日志表gid
+                LambdaUpdateWrapper<TLinkAccessLogs> linkAccessLogsUpdateWrapper = new LambdaUpdateWrapper<>();
+                linkAccessLogsUpdateWrapper
+                        .eq(TLinkAccessLogs::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
+                        .eq(TLinkAccessLogs::getGid, selectOne.getGid())
+                        .eq(TLinkAccessLogs::getDelFlag, 0);
+                TLinkAccessLogs linkAccessLogsDO = TLinkAccessLogs.builder()
+                        .gid(linkUpdateDTO.getGid())
+                        .build();
+                tLinkAccessLogsMapper.update(linkAccessLogsDO, linkAccessLogsUpdateWrapper);
+            } finally {
+                rLock.unlock();
+            }
+        }
+        //若短链接时间变更(兼顾提前手动过期)，需要删除缓存的短链接跳转
+        if (!Objects.equals(selectOne.getValidDateType(), linkUpdateDTO.getValidDateType())
+                || !Objects.equals(selectOne.getValidDate(), linkUpdateDTO.getValidDate())
+                || !Objects.equals(selectOne.getOriginUrl(), linkUpdateDTO.getOriginUrl())) {
+            stringRedisTemplate.delete(String.format(GOTO_SHORT_LINK_KEY, linkUpdateDTO.getFullShortUrl()));
+            //若把已过期的短链接又恢复为可用，需要把缓存里的”黑名单“删除。 =把LocalDateTime转成Date再比较确实麻烦=
+            //如数据库中的短链接有有效期并且在当前时间之前说明过期，已进入缓存黑名单
+            if (selectOne.getValidDate() != null
+                    && Date.from(selectOne.getValidDate().atZone(ZoneId.systemDefault()).toInstant()).before(new Date())) {
+                //若当前传过来的修改的时间满足可用条件(无有效期或大于当前时间)，则删除缓存的”黑名单“
+                if (Objects.equals(linkUpdateDTO.getValidDateType(), VailDateTypeEnum.PERMANENT.getType())
+                        || Date.from(linkUpdateDTO.getValidDate().atZone(ZoneId.systemDefault()).toInstant()).after(new Date())) {
+                    stringRedisTemplate.delete(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, linkUpdateDTO.getFullShortUrl()));
+                }
+            }
         }
     }
 
@@ -325,7 +485,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         String originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
         //使用字符串工具类判空
         if (StrUtil.isNotBlank(originalLink)) {
-            this.shortLinkStats(fullShortUrl, null, request, response);
+            LinkStatsRecordDTO statsRecord = buildLinkStatsRecordAndSetUser(fullShortUrl, request, response);
+            this.shortLinkStats(fullShortUrl, null, statsRecord);
             ((HttpServletResponse) response).sendRedirect(originalLink);
             return;
         }
@@ -348,7 +509,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             //第一个线程拿到数据存入缓存后，后面就不必继续往下执行
             originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
             if (StrUtil.isBlank(originalLink)) {
-                this.shortLinkStats(fullShortUrl, null, request, response);
+                LinkStatsRecordDTO statsRecord = buildLinkStatsRecordAndSetUser(fullShortUrl, request, response);
+                this.shortLinkStats(fullShortUrl, null, statsRecord);
                 ((HttpServletResponse) response).sendRedirect(originalLink);
                 return;
             }
@@ -395,52 +557,81 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     tLink.getOriginUrl(),
                     LinkUtil.getLinkCacheValidTime(tLink.getValidDate()), TimeUnit.MILLISECONDS);
             //跳转（重定向）
-            this.shortLinkStats(fullShortUrl, tLink.getGid(), request, response);
+            LinkStatsRecordDTO statsRecord = buildLinkStatsRecordAndSetUser(fullShortUrl, request, response);
+            this.shortLinkStats(fullShortUrl, tLink.getGid(), statsRecord);
             ((HttpServletResponse) response).sendRedirect(tLink.getOriginUrl());
         } finally {
             lock.unlock();
         }
     }
 
-    //短链接跳转数据统计
-    private void shortLinkStats(String fullShortUrl, String gid, ServletRequest request, ServletResponse response) {
+    private LinkStatsRecordDTO buildLinkStatsRecordAndSetUser(String fullShortUrl, ServletRequest request, ServletResponse response) {
         AtomicBoolean aBoolean = new AtomicBoolean();
         Cookie[] cookies = ((HttpServletRequest) request).getCookies();
+        final AtomicReference<String> uv = new AtomicReference<>();
+        Runnable addCookie = () -> {
+            uv.set(UUID.fastUUID().toString());
+            //设置cookie存于浏览器，标识同一个用户访问短链接
+            Cookie cookie = new Cookie("uv", uv.get());
+            //过期时间一个月
+            cookie.setMaxAge(60 * 60 * 24 * 30);
+            //如baidu.com/3V21X8 返回/3V21X8并添加cookie的作用路径（只要短连接部分，因为一个短链接可能有多个域名）
+            //控制浏览器在哪些请求中携带该Cookie。表示只有访问/3V21X8 及其子路径时，浏览器才会发送此 Cookie
+            cookie.setPath(StrUtil.sub(fullShortUrl, fullShortUrl.indexOf("/"), fullShortUrl.length()));
+            ((HttpServletResponse) response).addCookie(cookie);
+            stringRedisTemplate.opsForSet().add("short-link:stats:uv:" + fullShortUrl, uv.get());
+            aBoolean.set(Boolean.TRUE);
+        };
+        //判断是否携带cookie 如果携带进一步判断
+        if (ArrayUtil.isNotEmpty(cookies)) {
+            Arrays.stream(cookies)
+                    //只保留名为 "uv" 的 Cookie
+                    .filter(each -> Objects.equals(each.getName(), "uv"))
+                    //获取第一个匹配项
+                    .findFirst().map(Cookie::getValue)
+                    .ifPresentOrElse(each -> {
+                        //如果存在将UV标识存入Redis Set（统计去重）
+                        uv.set(each);
+                        final Long addUV = stringRedisTemplate.opsForSet().add("short-link:stats:uv:" + fullShortUrl, each);
+                        aBoolean.set(addUV != null && addUV > 0L);
+                    }, addCookie);
+        } else {
+            addCookie.run();
+        }
+        String remoteAddr = LinkUtil.getClientIp(((HttpServletRequest) request));
+        String os = LinkUtil.getOs(((HttpServletRequest) request));
+        String browser = LinkUtil.getBrowser(((HttpServletRequest) request));
+        String device = LinkUtil.getDevice(((HttpServletRequest) request));
+        String network = LinkUtil.getNetwork((HttpServletRequest) request);
+        Long addUIP = stringRedisTemplate.opsForSet().add("short-link:stats:uip:" + fullShortUrl, remoteAddr);
+        boolean ipBoolean = addUIP != null && addUIP > 0L;
+        return LinkStatsRecordDTO.builder()
+                .fullShortUrl(fullShortUrl)
+                .uv(uv.get())
+                .uvFirstFlag(aBoolean.get())
+                .uipFirstFlag(ipBoolean)
+                .remoteAddr(remoteAddr)
+                .os(os)
+                .browser(browser)
+                .device(device)
+                .network(network)
+                .build();
+    }
+
+    //引入延迟队列与读写锁 短链接统计
+    //com.project.shortlink.project.mq.consumer.DelayShortLinkStatsConsumer
+    @Override
+    public void shortLinkStats(String fullShortUrl, String gid, LinkStatsRecordDTO statsRecord) {
+        fullShortUrl = Optional.ofNullable(fullShortUrl).orElse(statsRecord.getFullShortUrl());
+        //读写锁
+        RReadWriteLock readWriteLock = redissonClient.getReadWriteLock(String.format(LOCK_GID_UPDATE_KEY, fullShortUrl));
+        RLock rLock = readWriteLock.readLock();
+        if (!rLock.tryLock()) {
+            //引入延迟队列调用
+            delayShortLinkStatsProducer.send(statsRecord);
+            return;
+        }
         try {
-            final AtomicReference<String> uv = new AtomicReference<>();
-            Runnable addCookie = () -> {
-                uv.set(UUID.fastUUID().toString());
-                //设置cookie存于浏览器，标识同一个用户访问短链接
-                Cookie cookie = new Cookie("uv", uv.get());
-                //过期时间一个月
-                cookie.setMaxAge(60 * 60 * 24 * 30);
-                //如baidu.com/3V21X8 返回/3V21X8并添加cookie的作用路径（只要短连接部分，因为一个短链接可能有多个域名）
-                //控制浏览器在哪些请求中携带该Cookie。表示只有访问/3V21X8 及其子路径时，浏览器才会发送此 Cookie
-                cookie.setPath(StrUtil.sub(fullShortUrl, fullShortUrl.indexOf("/"), fullShortUrl.length()));
-                ((HttpServletResponse) response).addCookie(cookie);
-                stringRedisTemplate.opsForSet().add("short-link:stats:uv:" + fullShortUrl, uv.get());
-                aBoolean.set(Boolean.TRUE);
-            };
-            //判断是否携带cookie 如果携带进一步判断
-            if (ArrayUtil.isNotEmpty(cookies)) {
-                Arrays.stream(cookies)
-                        //只保留名为 "uv" 的 Cookie
-                        .filter(each -> Objects.equals(each.getName(), "uv"))
-                        //获取第一个匹配项
-                        .findFirst().map(Cookie::getValue)
-                        .ifPresentOrElse(each -> {
-                            //如果存在将UV标识存入Redis Set（统计去重）
-                            uv.set(each);
-                            final Long addUV = stringRedisTemplate.opsForSet().add("short-link:stats:uv:" + fullShortUrl, each);
-                            aBoolean.set(addUV != null && addUV > 0L);
-                        }, addCookie);
-            } else {
-                addCookie.run();
-            }
-            //统计ip
-            final String remoteAddr = LinkUtil.getClientIp(((HttpServletRequest) request));
-            final Long addUIP = stringRedisTemplate.opsForSet().add("short-link:stats:uip:" + fullShortUrl, remoteAddr);
-            boolean ipBoolean = addUIP != null && addUIP > 0L;
             if (StrUtil.isBlank(gid)) {
                 final LambdaQueryWrapper<TLinkGoto> wrapper = new LambdaQueryWrapper<>();
                 wrapper.eq(TLinkGoto::getFullShortUrl, fullShortUrl);
@@ -453,8 +644,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             final TLinkAccessStats stats = TLinkAccessStats
                     .builder()
                     .pv(1)
-                    .uv(aBoolean.get() ? 1 : 0)
-                    .uip(ipBoolean ? 1 : 0)
+                    .uv(statsRecord.getUvFirstFlag() ? 1 : 0)
+                    .uip(statsRecord.getUipFirstFlag() ? 1 : 0)
                     .hour(hour)
                     .weekday(week)
                     .fullShortUrl(fullShortUrl)
@@ -467,7 +658,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             //高德密钥
             map.put("Key", localeKey);
             //当前访问ip
-            map.put("ip", remoteAddr);
+            map.put("ip", statsRecord.getRemoteAddr());
             final String localeStr = HttpUtil.get(AMAP_REMOTE_URL, map);
             final JSONObject localeObject = JSON.parseObject(localeStr);
             final String infocode = localeObject.getString("infocode");
@@ -480,8 +671,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                         .fullShortUrl(fullShortUrl)
                         .gid(gid)
                         .date(new Date())
-                        .province(actualProvince = blank ? "未知" : localeObject.getString("province"))
-                        .city(actualCity = blank ? "未知" : localeObject.getString("city"))
+                        .province(actualProvince = blank ? actualProvince : localeObject.getString("province"))
+                        .city(actualCity = blank ? actualCity : localeObject.getString("city"))
                         .adcode(blank ? "未知" : localeObject.getString("adcode"))
                         .cnt(1)
                         .country("中国")
@@ -489,47 +680,43 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 tLinkLocaleStatsMapper.shortLinkLocalStats(localeStats);
             }
             //统计操作设备
-            final String os = LinkUtil.getOs(((HttpServletRequest) request));
             TLinkOsStats osStats = TLinkOsStats
                     .builder()
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
                     .date(new Date())
                     .cnt(1)
-                    .os(os)
+                    .os(statsRecord.getOs())
                     .build();
             tLinkOsStatsMapper.shortLinkOsStats(osStats);
             //统计浏览器
-            final String browser = LinkUtil.getBrowser(((HttpServletRequest) request));
             TLinkBrowserStats browserStats = TLinkBrowserStats
                     .builder()
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
                     .date(new Date())
                     .cnt(1)
-                    .browser(browser)
+                    .browser(statsRecord.getBrowser())
                     .build();
             tLinkBrowserStatsMapper.shortLinkBrowserState(browserStats);
             //统计设备
-            final String device = LinkUtil.getDevice(((HttpServletRequest) request));
             TLinkDeviceStats deviceStats = TLinkDeviceStats
                     .builder()
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
                     .date(new Date())
                     .cnt(1)
-                    .device(device)
+                    .device(statsRecord.getDevice())
                     .build();
             tLinkDeviceStatsMapper.shortLinkDeviceStats(deviceStats);
             //统计网络类型
-            final String network = LinkUtil.getNetwork((HttpServletRequest) request);
             TLinkNetworkStats networkStats = TLinkNetworkStats
                     .builder()
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
                     .date(new Date())
                     .cnt(1)
-                    .network(network)
+                    .network(statsRecord.getNetwork())
                     .build();
             tLinkNetworkStatsMapper.shortLinkNetworkStats(networkStats);
             //统计高频访问IP(user用于统计新老访客->选择一段时间，查询用户是否在过去访问过，访问过则为老访客)
@@ -537,17 +724,17 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     .builder()
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
-                    .user(uv.get())
-                    .browser(browser)
-                    .os(os)
-                    .ip(remoteAddr)
-                    .network(network)
-                    .device(device)
+                    .user(statsRecord.getUv())
+                    .browser(statsRecord.getBrowser())
+                    .os(statsRecord.getOs())
+                    .ip(statsRecord.getRemoteAddr())
+                    .network(statsRecord.getNetwork())
+                    .device(statsRecord.getDevice())
                     .locale(StrUtil.join("-", "中国", actualProvince, actualCity))
                     .build();
             tLinkAccessLogsMapper.insert(accessLogs);
             //link表修改历史pv、uv、uip
-            baseMapper.incrementStats(gid, fullShortUrl, 1, aBoolean.get() ? 1 : 0, ipBoolean ? 1 : 0);
+            baseMapper.incrementStats(gid, fullShortUrl, 1, statsRecord.getUvFirstFlag() ? 1 : 0, statsRecord.getUipFirstFlag() ? 1 : 0);
             //”今日统计“
             TLinkStatsToday statsToday = TLinkStatsToday
                     .builder()
@@ -555,12 +742,14 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     .gid(gid)
                     .date(new Date())
                     .todayPv(1)
-                    .todayUv(aBoolean.get() ? 1 : 0)
-                    .todayUip(ipBoolean ? 1 : 0)
+                    .todayUv(statsRecord.getUvFirstFlag() ? 1 : 0)
+                    .todayUip(statsRecord.getUipFirstFlag() ? 1 : 0)
                     .build();
             tLinkStatsTodayMapper.shortLinkStatsToday(statsToday);
         } catch (Throwable e) {
             log.error("短链接访问量统计异常", e);
+        } finally {
+            rLock.unlock();
         }
     }
 

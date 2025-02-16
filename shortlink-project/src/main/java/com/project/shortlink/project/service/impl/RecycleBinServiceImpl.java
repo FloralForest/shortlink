@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.project.shortlink.project.dao.entity.TLink;
 import com.project.shortlink.project.dao.mapper.TLinkMapper;
@@ -93,8 +94,15 @@ public class RecycleBinServiceImpl extends ServiceImpl<TLinkMapper, TLink> imple
                 .eq(TLink::getFullShortUrl, recycleBinRemoveDTO.getFullShortUrl())
                 .eq(TLink::getGid, recycleBinRemoveDTO.getGid())
                 .eq(TLink::getEnableStatus, 1)
+                .eq(TLink::getDelTime, 0L)
                 .eq(TLink::getDelFlag, 0);
-        //在实体类的delFlag字段上添加@TableLogic注解mybatis会自动寻找delFlag 逻辑删除
-        baseMapper.delete(lambdaQueryWrapper);
+        //修改将要删除数据的删除时间戳字段
+        TLink delShortLinkDO = TLink.builder()
+                .delTime(System.currentTimeMillis())
+                .build();
+        delShortLinkDO.setDelFlag(1);
+        baseMapper.update(delShortLinkDO, lambdaQueryWrapper);
+//        //在实体类的delFlag字段上添加@TableLogic注解mybatis会自动寻找delFlag 逻辑删除
+//        baseMapper.delete(lambdaQueryWrapper);
     }
 }

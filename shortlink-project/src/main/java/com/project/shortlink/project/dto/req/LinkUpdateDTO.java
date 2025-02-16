@@ -27,6 +27,11 @@ public class LinkUpdateDTO {
     private String fullShortUrl;
 
     /**
+     * 原始分组标识
+     */
+    private String originGid;
+
+    /**
      * 分组标识
      */
     private String gid;
