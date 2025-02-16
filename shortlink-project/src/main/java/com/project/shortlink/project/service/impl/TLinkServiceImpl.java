@@ -91,16 +91,20 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     @Value("${short-link.stats.locale.amap-key}")
     private String localeKey;
 
+    @Value("${short-link.domain.defaull}")
+    private String shortLinkDomain;
+
     //创建短链接
     @Override
     public LinkCreateRespDTO createLink(LinkCreateDTO linkCreateDTO) {
         //生成的短链
         final String suffix = generateSuffix(linkCreateDTO);
         //与域名拼接的完整短链接
-        final String fullShorUrl = linkCreateDTO.getDomain() + "/" + suffix;
+        final String fullShorUrl =
+                (linkCreateDTO.getDomain() != null ? linkCreateDTO.getDomain() + ":8001" : shortLinkDomain) + "/" + suffix;
         final TLink tLink = TLink
                 .builder()
-                .domain(linkCreateDTO.getDomain())
+                .domain(linkCreateDTO.getDomain() != null ? linkCreateDTO.getDomain() + ":8001" : shortLinkDomain)
                 .originUrl(linkCreateDTO.getOriginUrl())
                 .gid(linkCreateDTO.getGid())
                 .createdType(linkCreateDTO.getCreatedType())
@@ -277,8 +281,13 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     public void linkUri(String linkUri, ServletRequest request, ServletResponse response) {
         //请求头中获取（服务器主机名或域名）
         final String serverName = request.getServerName();
+        //端口验证
+        final String serverPort = Optional.of(request.getServerPort())
+                .filter(each -> !Objects.equals(each, 80))
+                .map(String::valueOf).map(each -> ":" + each)
+                .orElse("");
         //完整短链接
-        String fullShortUrl = serverName + "/" + linkUri;
+        String fullShortUrl = serverName + serverPort + "/" + linkUri;
         //查找redis缓存 根据前缀key和完整短链接查找原链接 (处理缓存击穿)
         String originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
         //使用字符串工具类判空
@@ -501,7 +510,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     .ip(remoteAddr)
                     .network(network)
                     .device(device)
-                    .locale(StrUtil.join("-","中国",actualProvince,actualCity))
+                    .locale(StrUtil.join("-", "中国", actualProvince, actualCity))
                     .build();
             tLinkAccessLogsMapper.insert(accessLogs);
             //link表修改历史pv、uv、uip
