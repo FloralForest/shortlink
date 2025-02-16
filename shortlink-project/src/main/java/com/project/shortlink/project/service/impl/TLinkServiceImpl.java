@@ -197,18 +197,18 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     @Override
     public LinkBatchCreateRespDTO batchCreateShortLink(LinkBatchCreateDTO linkBatchCreateDTO) {
         //传过来的url集合与描述集合
-        final List<String> originUrls = linkBatchCreateDTO.getOriginUrls();
-        final List<String> describes = linkBatchCreateDTO.getDescribes();
-        final List<LinkBaseInfoRespDTO> linkBaseInfoRespS = new ArrayList<>();
+        List<String> originUrls = linkBatchCreateDTO.getOriginUrls();
+        List<String> describes = linkBatchCreateDTO.getDescribes();
+        List<LinkBaseInfoRespDTO> linkBaseInfoRespS = new ArrayList<>();
         //集合里的数据逐条操作转化
         for (int i = 0; i < originUrls.size(); i++) {
             try {
-                final LinkCreateDTO linkCreateDTO = BeanUtil.toBean(linkBatchCreateDTO, LinkCreateDTO.class);
+                LinkCreateDTO linkCreateDTO = BeanUtil.toBean(linkBatchCreateDTO, LinkCreateDTO.class);
                 linkCreateDTO.setOriginUrl(originUrls.get(i));
                 linkCreateDTO.setDescribe(describes.get(i));
                 //本质创建单个短链接
-                final LinkCreateRespDTO link = createLink(linkCreateDTO);
-                final LinkBaseInfoRespDTO infoRespDTO = LinkBaseInfoRespDTO
+                LinkCreateRespDTO link = createLink(linkCreateDTO);
+                LinkBaseInfoRespDTO infoRespDTO = LinkBaseInfoRespDTO
                         .builder()
                         .fullShortUrl(link.getFullShortUrl())
                         .originUrl(link.getOriginUrl())
