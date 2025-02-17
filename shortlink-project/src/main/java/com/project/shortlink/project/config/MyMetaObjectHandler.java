@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 /**
  * mybatis-plus 的工具类设置时间 实体类配合@TableField标记使用
  */
+//将类交给 Spring 管理 适用于工具类
 @Component
 public class MyMetaObjectHandler implements MetaObjectHandler {
     @Override

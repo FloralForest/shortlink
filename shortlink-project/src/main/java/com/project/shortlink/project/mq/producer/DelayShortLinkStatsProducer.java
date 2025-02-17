@@ -15,6 +15,7 @@ import static com.project.shortlink.project.common.constant.RedisKeyConstant.DEL
  * 延迟队列
  * 延迟消费短链接统计发送者
  */
+//将类交给 Spring 管理 适用于工具类
 @Component
 @RequiredArgsConstructor
 public class DelayShortLinkStatsProducer {

@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * mybatis 分页插件
  */
+//定义 Bean 和配置（包含了@Component）
 @Configuration
 public class DataBaseConfiguration {
     @Bean

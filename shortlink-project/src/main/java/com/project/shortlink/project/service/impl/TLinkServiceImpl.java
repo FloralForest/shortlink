@@ -18,6 +18,7 @@ import com.project.shortlink.project.common.convention.exception.ServiceExceptio
 import com.project.shortlink.project.common.enums.VailDateTypeEnum;
 import com.project.shortlink.project.dao.entity.*;
 import com.project.shortlink.project.dao.mapper.*;
+import com.project.shortlink.project.dto.biz.GotoDomainWhiteListDTO;
 import com.project.shortlink.project.dto.biz.LinkStatsRecordDTO;
 import com.project.shortlink.project.dto.req.LinkBatchCreateDTO;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
@@ -93,6 +94,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
 
     private final LinkStatsTodayService linkStatsTodayService;
     private final DelayShortLinkStatsProducer delayShortLinkStatsProducer;
+    private final GotoDomainWhiteListDTO gotoDomainWhiteListDTO;
 
     //高德获取ip密钥
     @Value("${short-link.stats.locale.amap-key}")
@@ -104,6 +106,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     //创建短链接
     @Override
     public LinkCreateRespDTO createLink(LinkCreateDTO linkCreateDTO) {
+        //判断原始链接是否在白名单
+        verificationWhitelist(linkCreateDTO.getOriginUrl());
         //生成的短链
         final String suffix = generateSuffix(linkCreateDTO);
         //与域名拼接的完整短链接
@@ -269,6 +273,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void linkUpdate(LinkUpdateDTO linkUpdateDTO) {
+        //判断原始链接是否在白名单
+        verificationWhitelist(linkUpdateDTO.getOriginUrl());
         //短链分组问题
         final LambdaQueryWrapper<TLink> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         //前端传修改前的原来的gid(getOriginGid)查询数据，拿修改后的gid(linkUpdateDTO.getGid())会查不到数据
@@ -771,5 +777,24 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             }
         }
         return "获取原链接图标失败";
+    }
+
+    //简单判断创建、修改的原始链接是否在白名单
+    private void verificationWhitelist(String originUrl) {
+        Boolean enable = gotoDomainWhiteListDTO.getEnable();
+        //若未开启白名单设置放行
+        if (enable == null || !enable) {
+            return;
+        }
+        //若用户传带www的链接需要简单处理一下(因为yml配置的白名单没有www)
+        String domain = LinkUtil.extractDomain(originUrl);
+        if (StrUtil.isBlank(domain)) {
+            throw new ClientException("跳转链接填写错误，请重新输入");
+        }
+        List<String> details = gotoDomainWhiteListDTO.getDetails();
+        //比较若包含至少一个元素时返回true
+        if (!details.contains(domain)) {
+            throw new ClientException("演示环境为避免恶意攻击，请生成以下网站跳转链接：" + gotoDomainWhiteListDTO.getNames());
+        }
     }
 }

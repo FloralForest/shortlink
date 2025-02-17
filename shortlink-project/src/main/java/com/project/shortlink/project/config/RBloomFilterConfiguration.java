@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * 布隆过滤器配置
  */
+//定义 Bean 和配置（包含了@Component）
 @Configuration
 public class RBloomFilterConfiguration {
 

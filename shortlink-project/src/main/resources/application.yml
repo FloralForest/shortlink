@@ -48,6 +48,15 @@ short-link:
   stats:
     locale:
       amap-key: 8593e7a96162641f142f53a419991cb4
+  goto-domain:
+    white-list:
+      enable: true
+      names: 'b站,掘金,博客园等'
+      details:
+        - baidu.com
+        - bilibili.com
+        - juejin.cn
+        - cnblogs.com
 
 #mybatis日志
 mybatis-plus:
