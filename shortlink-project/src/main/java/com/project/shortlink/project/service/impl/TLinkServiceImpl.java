@@ -108,14 +108,14 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     public LinkCreateRespDTO createLink(LinkCreateDTO linkCreateDTO) {
         //判断原始链接是否在白名单
         verificationWhitelist(linkCreateDTO.getOriginUrl());
+        final String linkDomain = linkCreateDTO.getDomain() != null ? linkCreateDTO.getDomain() + ":8001" : shortLinkDomain;
         //生成的短链
         final String suffix = generateSuffix(linkCreateDTO);
         //与域名拼接的完整短链接
-        final String fullShorUrl =
-                (linkCreateDTO.getDomain() != null ? linkCreateDTO.getDomain() + ":8001" : shortLinkDomain) + "/" + suffix;
+        final String fullShorUrl =linkDomain + "/" + suffix;
         final TLink tLink = TLink
                 .builder()
-                .domain(linkCreateDTO.getDomain() != null ? linkCreateDTO.getDomain() + ":8001" : shortLinkDomain)
+                .domain(linkDomain)
                 .originUrl(linkCreateDTO.getOriginUrl())
                 .gid(linkCreateDTO.getGid())
                 .createdType(linkCreateDTO.getCreatedType())
