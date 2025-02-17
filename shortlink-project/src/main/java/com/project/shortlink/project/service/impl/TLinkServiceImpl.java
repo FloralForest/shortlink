@@ -195,8 +195,9 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
 //            if (tLink == null){
 //                break;
 //            }
-            //布隆过滤器判断 如果不存在break退出循环（添加），布隆过滤器存在误判
-            if (!shorUriCreateCachePenetrationBloomFilter.contains(linkCreateDTO.getDomain() + "/" + shorUri)) {
+            //布隆过滤器判断 如果不存在break退出while循环，返回生成的链接，布隆过滤器存在误判
+            if (!shorUriCreateCachePenetrationBloomFilter.contains(
+                    (linkCreateDTO.getDomain() != null ? linkCreateDTO.getDomain() + ":8001" : shortLinkDomain) + "/" + shorUri)) {
                 break;
             }
             custom++;
