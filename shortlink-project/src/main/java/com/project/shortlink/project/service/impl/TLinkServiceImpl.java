@@ -314,9 +314,10 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             //修改根据lambdaUpdateWrapper条件查询到的数据
             baseMapper.update(tLink, lambdaUpdateWrapper);
         } else {
-            //引入延迟队列
+            //引入读写锁  设置并获取唯一锁(由固定前缀和当前操作短链接组成)
             RReadWriteLock readWriteLock = redissonClient.getReadWriteLock(String.format(LOCK_GID_UPDATE_KEY, linkUpdateDTO.getFullShortUrl()));
             RLock rLock = readWriteLock.writeLock();
+            //若锁不空闲返回信息
             if (!rLock.tryLock()) {
                 throw new ServiceException("短链接正在被访问，请稍后再试...");
             }
@@ -624,16 +625,17 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 .build();
     }
 
-    //引入延迟队列与读写锁 短链接统计
+    //引入延迟队列与读写锁 短链接跳转数据统计
     //com.project.shortlink.project.mq.consumer.DelayShortLinkStatsConsumer
     @Override
     public void shortLinkStats(String fullShortUrl, String gid, LinkStatsRecordDTO statsRecord) {
         fullShortUrl = Optional.ofNullable(fullShortUrl).orElse(statsRecord.getFullShortUrl());
-        //读写锁
+        //读写锁 设置并获取唯一锁(由固定前缀和当前操作短链接组成)
         RReadWriteLock readWriteLock = redissonClient.getReadWriteLock(String.format(LOCK_GID_UPDATE_KEY, fullShortUrl));
         RLock rLock = readWriteLock.readLock();
+        //若锁不空闲，加入延迟队列
         if (!rLock.tryLock()) {
-            //引入延迟队列调用
+            //引入延迟队列调用（为避免修改操作(修改操作也设置了读写锁)和跳转统计操作冲突）
             delayShortLinkStatsProducer.send(statsRecord);
             return;
         }
@@ -755,6 +757,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         } catch (Throwable e) {
             log.error("短链接访问量统计异常", e);
         } finally {
+            //修改操作完成后释放锁
             rLock.unlock();
         }
     }

@@ -1,0 +1,30 @@
+{
+  "groups": [
+    {
+      "name": "short-link.goto-domain.white-list",
+      "type": "com.project.shortlink.project.dto.biz.GotoDomainWhiteListDTO",
+      "sourceType": "com.project.shortlink.project.dto.biz.GotoDomainWhiteListDTO"
+    }
+  ],
+  "properties": [
+    {
+      "name": "short-link.goto-domain.white-list.details",
+      "type": "java.util.List<java.lang.String>",
+      "description": "可跳转的原始链接域名",
+      "sourceType": "com.project.shortlink.project.dto.biz.GotoDomainWhiteListDTO"
+    },
+    {
+      "name": "short-link.goto-domain.white-list.enable",
+      "type": "java.lang.Boolean",
+      "description": "是否开启跳转原始链接域名白名单验证",
+      "sourceType": "com.project.shortlink.project.dto.biz.GotoDomainWhiteListDTO"
+    },
+    {
+      "name": "short-link.goto-domain.white-list.names",
+      "type": "java.lang.String",
+      "description": "跳转原始域名白名单网站名称集合",
+      "sourceType": "com.project.shortlink.project.dto.biz.GotoDomainWhiteListDTO"
+    }
+  ],
+  "hints": []
+}
