@@ -1,6 +1,7 @@
 package com.project.shortlink.admin.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.project.shortlink.admin.common.convention.exception.ClientException;
@@ -25,6 +26,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -147,10 +149,14 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser> implements
         if (tUser == null)
             throw new ClientException("用户不存在或密码错误");
 
-        //重复登录判断
-        final Boolean aBoolean = stringRedisTemplate.hasKey("login_" + userLoginDTO.getUsername());
-        if (aBoolean != null && aBoolean)
-            throw new ClientException("已登录，请勿重复操作");
+        //重复登录判断 用户重复登录返回token
+        final Map<Object, Object> loginMap = stringRedisTemplate.opsForHash().entries("login_" + userLoginDTO.getUsername());
+        //CollUti处理集合的工具类 若不为空
+        if (CollUtil.isNotEmpty(loginMap)) {
+            final String token = loginMap.keySet().stream()
+                    .findFirst().map(Object::toString).orElseThrow(() -> new ClientException("用户登录错误！"));
+            return new UserLoginRespDTO(token);
+        }
         /* 解决重复登录的问题
          * Hash
          * Key: login_用户名
