@@ -173,6 +173,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
 
     //原链接生成62进制的短链接
     private String generateSuffix(LinkCreateDTO linkCreateDTO) {
+        final String linkDomain = linkCreateDTO.getDomain() != null ? linkCreateDTO.getDomain() + ":8001" : shortLinkDomain;
         //确保短链的唯一性
         //设置最大循环次数
         int custom = 0;
@@ -196,8 +197,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
 //                break;
 //            }
             //布隆过滤器判断 如果不存在break退出while循环，返回生成的链接，布隆过滤器存在误判
-            if (!shorUriCreateCachePenetrationBloomFilter.contains(
-                    (linkCreateDTO.getDomain() != null ? linkCreateDTO.getDomain() + ":8001" : shortLinkDomain) + "/" + shorUri)) {
+            if (!shorUriCreateCachePenetrationBloomFilter.contains(linkDomain + "/" + shorUri)) {
                 break;
             }
             custom++;
