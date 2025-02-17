@@ -1,6 +1,7 @@
 package com.project.shortlink.admin.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.project.shortlink.admin.common.biz.user.UserContext;
 import com.project.shortlink.admin.common.convention.exception.ClientException;
@@ -17,9 +18,14 @@ import com.project.shortlink.admin.service.TGroupService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.project.shortlink.admin.util.RandomGenerator;
 import lombok.RequiredArgsConstructor;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+
+import static com.project.shortlink.admin.common.constant.RedisCacheConstant.LOCK_GROUP_CREATE_KEY;
 
 /**
  * <p>
@@ -34,9 +40,12 @@ import java.util.*;
 public class TGroupServiceImpl extends ServiceImpl<TGroupMapper, TGroup> implements TGroupService {
 
     final LinkRemoteService linkRemoteService = new LinkRemoteService(){};
+    private final RedissonClient redissonClient;
+    @Value("${short-link.group.max}")
+    private Integer groupMax;
     private String name;
     /**
-     * 新增短链接分组 可变参数
+     * 新增短链接分组 兼顾用户注册时系统默认分组和用户自定义分组使用可变参数优化
      */
     @Override
     public void saveGroup(String groupName, String... username) {
@@ -44,20 +53,33 @@ public class TGroupServiceImpl extends ServiceImpl<TGroupMapper, TGroup> impleme
         name = (username != null && username.length > 0)
                 ? username[0]
                 : UserContext.getUsername();
-        do {
-            //查询生成的随机数是否重复
-            gidRan = RandomGenerator.generateRandom(6);
-        } while (!ifGid(gidRan));
+        //添加分布式锁，限制用户创建分组数（20个）防止同一用户在多个设备同时操作
+        final RLock lock = redissonClient.getLock(String.format(LOCK_GROUP_CREATE_KEY, name));
+        lock.lock();
+        try{
+            final LambdaQueryWrapper<TGroup> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(TGroup::getUsername, name).eq(TGroup::getDelFlag, 0);
+            final List<TGroup> groups = baseMapper.selectList(wrapper);
+            if (CollUtil.isNotEmpty(groups) && groups.size() == groupMax){
+                throw new ClientException(String.format("以达到最大分组数：%d", groupMax));
+            }
+            do {
+                //查询生成的随机数是否重复
+                gidRan = RandomGenerator.generateRandom(6);
+            } while (!ifGid(gidRan));
 
-        //TGroup使用@Builder注解
-        final TGroup group = TGroup.builder()
-                //工具类生成6位随机数
-                .gid(gidRan)
-                .name(groupName)
-                .username(name)
-                .sortOrder(0)
-                .build();
-        baseMapper.insert(group);
+            //TGroup使用@Builder注解
+            final TGroup group = TGroup.builder()
+                    //工具类生成6位随机数
+                    .gid(gidRan)
+                    .name(groupName)
+                    .username(name)
+                    .sortOrder(0)
+                    .build();
+            baseMapper.insert(group);
+        }finally {
+            lock.unlock();
+        }
     }
 
     private boolean ifGid(String gidRan) {

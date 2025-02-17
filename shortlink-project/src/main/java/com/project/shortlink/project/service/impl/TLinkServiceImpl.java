@@ -595,7 +595,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     //只保留名为 "uv" 的 Cookie
                     .filter(each -> Objects.equals(each.getName(), "uv"))
                     //获取第一个匹配项
-                    .findFirst().map(Cookie::getValue)
+                    .findFirst()
+                    .map(Cookie::getValue)
                     .ifPresentOrElse(each -> {
                         //如果存在将UV标识存入Redis Set（统计去重）
                         uv.set(each);

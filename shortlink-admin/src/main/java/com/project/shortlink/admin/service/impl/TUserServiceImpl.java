@@ -138,7 +138,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser> implements
      */
     @Override
     public UserLoginRespDTO login(UserLoginDTO userLoginDTO) {
-        //根据用户名和密码查询用户，并且未逻辑删除
+        //根据用户名和密码查询未逻辑删除用户
         final LambdaQueryWrapper<TUser> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper
                 .eq(TUser::getUsername, userLoginDTO.getUsername())
@@ -149,12 +149,15 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser> implements
         if (tUser == null)
             throw new ClientException("用户不存在或密码错误");
 
-        //重复登录判断 用户重复登录返回token
+        //查询redis判断是否重复登录 用户重复登录返回token
         final Map<Object, Object> loginMap = stringRedisTemplate.opsForHash().entries("login_" + userLoginDTO.getUsername());
-        //CollUti处理集合的工具类 若不为空
+        //CollUti处理集合的工具类 若不为空定为重复登录返回token
         if (CollUtil.isNotEmpty(loginMap)) {
             final String token = loginMap.keySet().stream()
-                    .findFirst().map(Object::toString).orElseThrow(() -> new ClientException("用户登录错误！"));
+                    //获取第一个元素
+                    .findFirst()
+                    .map(Object::toString)
+                    .orElseThrow(() -> new ClientException("用户登录错误！"));
             return new UserLoginRespDTO(token);
         }
         /* 解决重复登录的问题
@@ -164,7 +167,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser> implements
          *      Key: token 标识
          *      Value: JSON 用户信息
          */
-        //用户存在 存入redis 生成一个UUID唯一值当作token 设置5小时的有效期
+        //数据库中用户存在且第一次登录 存入redis 生成一个UUID唯一值当作token 设置5小时的有效期
         final String uuid = UUID.randomUUID().toString();
         stringRedisTemplate.opsForHash().put(
                 "login_" + userLoginDTO.getUsername(),
