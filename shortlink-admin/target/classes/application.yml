@@ -27,7 +27,10 @@ spring:
       host: 127.0.0.1
       port: 6379
 #      password: 123456
-
+#链接相关配置
+short-link:
+  group:
+    max: 20
 #mybatis日志
 mybatis-plus:
   configuration:

@@ -8,7 +8,6 @@ import com.project.shortlink.admin.common.convention.exception.ClientException;
 import com.project.shortlink.admin.common.convention.result.Result;
 import com.project.shortlink.admin.dao.entity.TGroup;
 import com.project.shortlink.admin.dao.mapper.TGroupMapper;
-import com.project.shortlink.admin.dto.req.GroupSaveDTO;
 import com.project.shortlink.admin.dto.req.GroupSortDTO;
 import com.project.shortlink.admin.dto.req.GroupUpdateDTO;
 import com.project.shortlink.admin.dto.resp.GroupRespDTO;
@@ -43,12 +42,13 @@ public class TGroupServiceImpl extends ServiceImpl<TGroupMapper, TGroup> impleme
     private final RedissonClient redissonClient;
     @Value("${short-link.group.max}")
     private Integer groupMax;
-    private String name;
+
     /**
      * 新增短链接分组 兼顾用户注册时系统默认分组和用户自定义分组使用可变参数优化
      */
     @Override
     public void saveGroup(String groupName, String... username) {
+        String name;
         String gidRan;
         name = (username != null && username.length > 0)
                 ? username[0]
@@ -64,9 +64,9 @@ public class TGroupServiceImpl extends ServiceImpl<TGroupMapper, TGroup> impleme
                 throw new ClientException(String.format("以达到最大分组数：%d", groupMax));
             }
             do {
-                //查询生成的随机数是否重复
                 gidRan = RandomGenerator.generateRandom(6);
-            } while (!ifGid(gidRan));
+                //查询随机生成的gid是否重复
+            } while (!ifGid(gidRan, name));
 
             //TGroup使用@Builder注解
             final TGroup group = TGroup.builder()
@@ -82,11 +82,11 @@ public class TGroupServiceImpl extends ServiceImpl<TGroupMapper, TGroup> impleme
         }
     }
 
-    private boolean ifGid(String gidRan) {
+    private boolean ifGid(String gidRan, String userName) {
         final LambdaQueryWrapper<TGroup> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper
                 .eq(TGroup::getGid, gidRan)
-                .eq(TGroup::getUsername, name)
+                .eq(TGroup::getUsername, userName)
                 .eq(TGroup::getDelFlag, 0);
         //存在返回false
         return baseMapper.selectOne(lambdaQueryWrapper) == null;
