@@ -1,8 +1,10 @@
 package com.project.shortlink.project.controller;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.project.shortlink.project.common.convention.result.Result;
 import com.project.shortlink.project.common.convention.result.Results;
+import com.project.shortlink.project.config.CustomBlockHandler;
 import com.project.shortlink.project.dto.req.LinkBatchCreateDTO;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;
 import com.project.shortlink.project.dto.req.LinkPageDTO;
@@ -37,6 +39,14 @@ public class TLinkController {
 
     //创建短链接
     @PostMapping("/api/shortlink/project/link/createLink")
+    //Sentinel框架 注解控制限流规则。
+    @SentinelResource(
+            //获取限流规则 com.project.shortlink.project.config.SentinelRuleConfig
+            value = "create_short-link",
+            //自定义限流策略（限流后做的事）
+            blockHandler = "createShortLinkBlockHandlerMethod",
+            blockHandlerClass = CustomBlockHandler.class
+    )
     //@RequestBody 将 HTTP 请求体（如 JSON、XML）中的数据转换为 Java 对象。
     public Result<LinkCreateRespDTO> createLink(@RequestBody LinkCreateDTO linkCreateDTO) {
         return Results.success(tLinkService.createLink(linkCreateDTO))
