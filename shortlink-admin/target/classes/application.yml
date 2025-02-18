@@ -29,8 +29,14 @@ spring:
 #      password: 123456
 #链接相关配置
 short-link:
+  #最大分组数
   group:
     max: 20
+  #用户操作流量风控（限流）配置
+  flow-limit:
+    enable: true
+    time-window: 1
+    max-access-count: 0
 #mybatis日志
 mybatis-plus:
   configuration:

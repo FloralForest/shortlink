@@ -18,7 +18,7 @@ import com.project.shortlink.project.common.convention.exception.ServiceExceptio
 import com.project.shortlink.project.common.enums.VailDateTypeEnum;
 import com.project.shortlink.project.dao.entity.*;
 import com.project.shortlink.project.dao.mapper.*;
-import com.project.shortlink.project.dto.biz.GotoDomainWhiteListDTO;
+import com.project.shortlink.project.config.GotoDomainWhiteListDTO;
 import com.project.shortlink.project.dto.biz.LinkStatsRecordDTO;
 import com.project.shortlink.project.dto.req.LinkBatchCreateDTO;
 import com.project.shortlink.project.dto.req.LinkCreateDTO;

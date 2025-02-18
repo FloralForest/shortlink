@@ -1,4 +1,4 @@
-package com.project.shortlink.project.dto.biz;
+package com.project.shortlink.project.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -12,7 +12,7 @@ import java.util.List;
 @Data
 //将类交给 Spring 管理 适用于工具类
 @Component
-//使用注释处理器 Maven添加依赖
+//使用注释处理器 Maven添加依赖  yml中配置
 @ConfigurationProperties(prefix = "short-link.goto-domain.white-list")
 public class GotoDomainWhiteListDTO {
     /**

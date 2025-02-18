@@ -32,6 +32,11 @@ short-link:
   #最大分组数
   group:
     max: 20
+  #用户操作流量风控（限流）配置
+  flow-limit:
+    enable: true
+    time-window: 1
+    max-access-count: 100
 #mybatis日志
 mybatis-plus:
   configuration:
