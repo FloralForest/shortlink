@@ -573,6 +573,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         }
     }
 
+    //以上短链接跳转抽取的公共信息
     private LinkStatsRecordDTO buildLinkStatsRecordAndSetUser(String fullShortUrl, ServletRequest request, ServletResponse response) {
         AtomicBoolean aBoolean = new AtomicBoolean();
         Cookie[] cookies = ((HttpServletRequest) request).getCookies();
