@@ -25,7 +25,7 @@ public class SentinelRuleConfig implements InitializingBean {
         //设置规则为每秒查询率
         createOrderRule.setGrade(RuleConstant.FLOW_GRADE_QPS);
         //设置每秒访问上限
-        createOrderRule.setCount(1000);
+        createOrderRule.setCount(100);
         rules.add(createOrderRule);
         FlowRuleManager.loadRules(rules);
     }
