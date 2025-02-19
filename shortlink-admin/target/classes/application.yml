@@ -36,7 +36,7 @@ short-link:
   flow-limit:
     enable: true
     time-window: 1
-    max-access-count: 0
+    max-access-count: 100
 #mybatis日志
 mybatis-plus:
   configuration:

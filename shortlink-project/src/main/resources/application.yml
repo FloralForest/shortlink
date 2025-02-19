@@ -27,11 +27,11 @@ spring:
       host: 127.0.0.1
       port: 6379
   #   password: 123456
-#  #thymeleaf配置
-#  mvc:
-#    view:
-#      prefix: /templates/
-#      suffix: .html
+  #  #thymeleaf配置
+  #  mvc:
+  #    view:
+  #      prefix: /templates/
+  #      suffix: .html
   mvc:
     view:
       prefix: classpath:/templates/
@@ -57,7 +57,20 @@ short-link:
         - bilibili.com
         - juejin.cn
         - cnblogs.com
-
+#消息队列配置
+rocketmq:
+  name-server: 127.0.0.1:9876
+  #生产者
+  producer:
+    group: short-link_project-service_stats-save_pg
+    topic: short-link_project-service_topic
+    #全局超时时间
+    send-message-timeout: 2000
+    retry-times-when-send-failed: 1
+    retry-times-when-send-async-failed: 1
+  #消费者
+  consumer:
+    group: short-link_project-service_stats-save_cg
 #mybatis日志
 mybatis-plus:
   configuration:

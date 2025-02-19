@@ -9,7 +9,7 @@ local accessKey = "short-link:user-flow-risk-control:" .. username
 -- 原子递增访问次数，并获取递增后的值
 local currentAccessCount = redis.call("INCR", accessKey)
 
--- 设置键的过期时间
+-- 设置键的过期时间 若键已存在，原子递增访问次数并返回递增后的值
 if currentAccessCount == 1 then
     redis.call("EXPIRE", accessKey, timeWindow)
 end

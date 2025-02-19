@@ -19,7 +19,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 短链接监控实现类
+ * 短链接监控数据显示实现类
  */
 @Service
 @RequiredArgsConstructor//配合Lombok的构造器注入

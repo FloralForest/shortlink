@@ -16,7 +16,7 @@ import static com.project.shortlink.project.common.constant.RedisKeyConstant.DEL
 
 /**
  * 延迟队列
- * 延迟记录短链接统计组件
+ * 延迟记录短链接统计消费者
  * Redis的延迟队列
  * 消费阻塞
  */

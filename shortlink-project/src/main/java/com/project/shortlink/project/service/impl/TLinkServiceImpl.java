@@ -26,6 +26,7 @@ import com.project.shortlink.project.dto.req.LinkPageDTO;
 import com.project.shortlink.project.dto.req.LinkUpdateDTO;
 import com.project.shortlink.project.dto.resp.*;
 import com.project.shortlink.project.mq.producer.DelayShortLinkStatsProducer;
+import com.project.shortlink.project.mq.producer.ShortLinkStatsSaveProducer;
 import com.project.shortlink.project.service.LinkStatsTodayService;
 import com.project.shortlink.project.service.TLinkService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -65,7 +66,7 @@ import static com.project.shortlink.project.common.constant.ShortLinkConstant.AM
 
 /**
  * <p>
- * 服务实现类
+ * 服务实现类 短链接跳转、创建、统计等
  * </p>
  *
  * @author project
@@ -93,26 +94,24 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
     private final TLinkStatsTodayMapper tLinkStatsTodayMapper;
 
     private final LinkStatsTodayService linkStatsTodayService;
-    private final DelayShortLinkStatsProducer delayShortLinkStatsProducer;
     private final GotoDomainWhiteListDTO gotoDomainWhiteListDTO;
-
-    //高德获取ip密钥
-    @Value("${short-link.stats.locale.amap-key}")
-    private String localeKey;
+    private final ShortLinkStatsSaveProducer shortLinkStatsSaveProducer;
 
     @Value("${short-link.domain.defaull}")
     private String shortLinkDomain;
 
     //创建短链接
+    //Transactional注解 添加失败回滚
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public LinkCreateRespDTO createLink(LinkCreateDTO linkCreateDTO) {
         //判断原始链接是否在白名单
         verificationWhitelist(linkCreateDTO.getOriginUrl());
         final String linkDomain = linkCreateDTO.getDomain() != null ? linkCreateDTO.getDomain() + ":8001" : shortLinkDomain;
-        //生成的短链
+        //生成的短链 布隆过滤器
         final String suffix = generateSuffix(linkCreateDTO);
         //与域名拼接的完整短链接
-        final String fullShorUrl =linkDomain + "/" + suffix;
+        final String fullShorUrl = linkDomain + "/" + suffix;
         final TLink tLink = TLink
                 .builder()
                 .domain(linkDomain)
@@ -146,16 +145,9 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             //添加关联表
             tLinkGotoMapper.insert(tLinkGoto);
         } catch (DuplicateKeyException e) {
-            //进一步查询数据库判断是否真的存在
-            final LambdaQueryWrapper<TLink> lambdaQueryWrapper = new LambdaQueryWrapper<>();
-            lambdaQueryWrapper.eq(TLink::getFullShortUrl, fullShorUrl);
-            final TLink istLink = baseMapper.selectOne(lambdaQueryWrapper);
-            if (istLink != null) {
-                log.warn("短链接：{} 重复", fullShorUrl);
-                throw new ServiceException("短链接重复");
-            }
+            throw new ServiceException(String.format("短链接：%s 重复", fullShorUrl));
         }
-        //缓存预热(把必访问的资源添加到缓存)
+        //缓存预热(把必访问的资源添加到缓存)-key,value,time
         stringRedisTemplate.opsForValue().set(
                 String.format(GOTO_SHORT_LINK_KEY, fullShorUrl),
                 linkCreateDTO.getOriginUrl(),
@@ -184,8 +176,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             }
             //原链接
             String originUrl = linkCreateDTO.getOriginUrl();
-            //添加一个当前毫秒数，尽量降低冲突
-            originUrl += System.currentTimeMillis();
+            //添加一个UUID，尽量降低冲突
+            originUrl += UUID.fastUUID().toString();
             //数据库保存的原链接是前端传的原链接，这里添加的毫秒数生成的短链接目的是为了降低冲突
             //说白了数据库里只要有短链接去对应原链接就行了
             shorUri = HashUtil.hashToBase(originUrl);
@@ -196,7 +188,8 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
 //            if (tLink == null){
 //                break;
 //            }
-            //布隆过滤器判断 如果不存在break退出while循环，返回生成的链接，布隆过滤器存在误判
+            //布隆过滤器判断 如果不存在break退出while循环，返回生成的链接。这里为布隆判断存在然后取反(false)继续循环。
+            //布隆过滤器可能误判，但布隆过滤器不存在一定不存在。
             if (!shorUriCreateCachePenetrationBloomFilter.contains(linkDomain + "/" + shorUri)) {
                 break;
             }
@@ -628,141 +621,18 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 .build();
     }
 
-    //引入延迟队列与读写锁 短链接跳转数据统计
+    //引入延迟队列与读写锁 短链接跳转数据统计 --》更改为使用RocketMQ消息队列
     //com.project.shortlink.project.mq.consumer.DelayShortLinkStatsConsumer
+    //com.project.shortlink.project.mq.consumer.ShortLinkStatsSaveConsumer
     @Override
     public void shortLinkStats(String fullShortUrl, String gid, LinkStatsRecordDTO statsRecord) {
-        fullShortUrl = Optional.ofNullable(fullShortUrl).orElse(statsRecord.getFullShortUrl());
-        //读写锁 设置并获取唯一锁(由固定前缀和当前操作短链接组成)
-        RReadWriteLock readWriteLock = redissonClient.getReadWriteLock(String.format(LOCK_GID_UPDATE_KEY, fullShortUrl));
-        RLock rLock = readWriteLock.readLock();
-        //若锁不空闲，加入延迟队列
-        if (!rLock.tryLock()) {
-            //引入延迟队列调用（为避免修改操作(修改操作也设置了读写锁)和跳转统计操作冲突）
-            delayShortLinkStatsProducer.send(statsRecord);
-            return;
-        }
-        try {
-            if (StrUtil.isBlank(gid)) {
-                final LambdaQueryWrapper<TLinkGoto> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(TLinkGoto::getFullShortUrl, fullShortUrl);
-                gid = tLinkGotoMapper.selectOne(wrapper).getGid();
-            }
-            //获取当前时间为星期几，使用getIso8601Value更直观
-            final int week = DateUtil.dayOfWeekEnum(new Date()).getIso8601Value();
-            //获取当前时间的小时部分
-            final int hour = DateUtil.hour(new Date(), true);
-            final TLinkAccessStats stats = TLinkAccessStats
-                    .builder()
-                    .pv(1)
-                    .uv(statsRecord.getUvFirstFlag() ? 1 : 0)
-                    .uip(statsRecord.getUipFirstFlag() ? 1 : 0)
-                    .hour(hour)
-                    .weekday(week)
-                    .fullShortUrl(fullShortUrl)
-                    .gid(gid)
-                    .date(new Date())
-                    .build();
-            tLinkAccessStatsMapper.shortLinkStats(stats);
-            //短链接访问地区统计
-            final Map<String, Object> map = new HashMap<>();
-            //高德密钥
-            map.put("Key", localeKey);
-            //当前访问ip
-            map.put("ip", statsRecord.getRemoteAddr());
-            final String localeStr = HttpUtil.get(AMAP_REMOTE_URL, map);
-            final JSONObject localeObject = JSON.parseObject(localeStr);
-            final String infocode = localeObject.getString("infocode");
-            String actualProvince = "未知";
-            String actualCity = "未知";
-            if (StrUtil.isNotBlank(infocode) && StrUtil.equals(infocode, "10000")) {
-                final boolean blank = StrUtil.equals(localeObject.getString("province"), "[]");
-                TLinkLocaleStats localeStats = TLinkLocaleStats
-                        .builder()
-                        .fullShortUrl(fullShortUrl)
-                        .gid(gid)
-                        .date(new Date())
-                        .province(actualProvince = blank ? actualProvince : localeObject.getString("province"))
-                        .city(actualCity = blank ? actualCity : localeObject.getString("city"))
-                        .adcode(blank ? "未知" : localeObject.getString("adcode"))
-                        .cnt(1)
-                        .country("中国")
-                        .build();
-                tLinkLocaleStatsMapper.shortLinkLocalStats(localeStats);
-            }
-            //统计操作设备
-            TLinkOsStats osStats = TLinkOsStats
-                    .builder()
-                    .fullShortUrl(fullShortUrl)
-                    .gid(gid)
-                    .date(new Date())
-                    .cnt(1)
-                    .os(statsRecord.getOs())
-                    .build();
-            tLinkOsStatsMapper.shortLinkOsStats(osStats);
-            //统计浏览器
-            TLinkBrowserStats browserStats = TLinkBrowserStats
-                    .builder()
-                    .fullShortUrl(fullShortUrl)
-                    .gid(gid)
-                    .date(new Date())
-                    .cnt(1)
-                    .browser(statsRecord.getBrowser())
-                    .build();
-            tLinkBrowserStatsMapper.shortLinkBrowserState(browserStats);
-            //统计设备
-            TLinkDeviceStats deviceStats = TLinkDeviceStats
-                    .builder()
-                    .fullShortUrl(fullShortUrl)
-                    .gid(gid)
-                    .date(new Date())
-                    .cnt(1)
-                    .device(statsRecord.getDevice())
-                    .build();
-            tLinkDeviceStatsMapper.shortLinkDeviceStats(deviceStats);
-            //统计网络类型
-            TLinkNetworkStats networkStats = TLinkNetworkStats
-                    .builder()
-                    .fullShortUrl(fullShortUrl)
-                    .gid(gid)
-                    .date(new Date())
-                    .cnt(1)
-                    .network(statsRecord.getNetwork())
-                    .build();
-            tLinkNetworkStatsMapper.shortLinkNetworkStats(networkStats);
-            //统计高频访问IP(user用于统计新老访客->选择一段时间，查询用户是否在过去访问过，访问过则为老访客)
-            TLinkAccessLogs accessLogs = TLinkAccessLogs
-                    .builder()
-                    .fullShortUrl(fullShortUrl)
-                    .gid(gid)
-                    .user(statsRecord.getUv())
-                    .browser(statsRecord.getBrowser())
-                    .os(statsRecord.getOs())
-                    .ip(statsRecord.getRemoteAddr())
-                    .network(statsRecord.getNetwork())
-                    .device(statsRecord.getDevice())
-                    .locale(StrUtil.join("-", "中国", actualProvince, actualCity))
-                    .build();
-            tLinkAccessLogsMapper.insert(accessLogs);
-            //link表修改历史pv、uv、uip
-            baseMapper.incrementStats(gid, fullShortUrl, 1, statsRecord.getUvFirstFlag() ? 1 : 0, statsRecord.getUipFirstFlag() ? 1 : 0);
-            //”今日统计“
-            TLinkStatsToday statsToday = TLinkStatsToday
-                    .builder()
-                    .fullShortUrl(fullShortUrl)
-                    .gid(gid)
-                    .date(new Date())
-                    .todayPv(1)
-                    .todayUv(statsRecord.getUvFirstFlag() ? 1 : 0)
-                    .todayUip(statsRecord.getUipFirstFlag() ? 1 : 0)
-                    .build();
-            tLinkStatsTodayMapper.shortLinkStatsToday(statsToday);
-        } catch (Throwable e) {
-            log.error("短链接访问量统计异常", e);
-        } finally {
-            //修改操作完成后释放锁
-            rLock.unlock();
-        }
+        final Map<String, String> producerMap = new HashMap<>();
+        producerMap.put("fullShortUrl", fullShortUrl);
+        producerMap.put("gid", gid);
+        //序列化为JSON
+        producerMap.put("statsRecord", JSON.toJSONString(statsRecord));
+        //消息队列生产者
+        shortLinkStatsSaveProducer.send(producerMap);
     }
 
     //获取原链接图标
