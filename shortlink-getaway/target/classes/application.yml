@@ -1,0 +1,43 @@
+#网关配置
+server:
+  port: 8000
+spring:
+  #应用名
+  application:
+    name: short-link-gateway
+  #redis链接配置
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      #password: 123456
+  cloud:
+    #nacos配置
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+    #网关配置
+    gateway:
+      routes:
+        - id: short-link-admin
+          #应用(服务)名称+代理路径
+          uri: lb://short-link-admin/api/shortlink/admin/**
+          #转发
+          predicates:
+            - Path=/api/shortlink/admin/**
+          #token验证
+          filters:
+            - name: TokenValidate
+              args:
+                #白名单集合
+                whitePathList:
+                  - /api/shortlink/admin/user/login
+                  - /api/shortlink/admin/user/isUsername
+
+        - id: short-link-project
+          uri: lb://short-link-project/api/shortlink/**
+          predicates:
+            - Path=/api/shortlink/**
+          #token验证无白名单
+          filters:
+            - name: TokenValidate

@@ -153,6 +153,8 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser> implements
         final Map<Object, Object> loginMap = stringRedisTemplate.opsForHash().entries("login_" + userLoginDTO.getUsername());
         //CollUti处理集合的工具类 若不为空定为重复登录返回token
         if (CollUtil.isNotEmpty(loginMap)) {
+            //考虑到中台调用的折中方案，重新刷新登录时间
+            stringRedisTemplate.expire("login_" + userLoginDTO.getUsername(), 5L, TimeUnit.HOURS);
             final String token = loginMap.keySet().stream()
                     //获取第一个元素
                     .findFirst()
