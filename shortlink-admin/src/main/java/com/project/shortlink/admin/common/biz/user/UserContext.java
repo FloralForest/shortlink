@@ -56,10 +56,10 @@ public final class UserContext {
      *
      * @return 用户 Token
      */
-    public static String getToken() {
-        UserInfoDTO userInfoDTO = USER_THREAD_LOCAL.get();
-        return Optional.ofNullable(userInfoDTO).map(UserInfoDTO::getToken).orElse(null);
-    }
+//    public static String getToken() {
+//        UserInfoDTO userInfoDTO = USER_THREAD_LOCAL.get();
+//        return Optional.ofNullable(userInfoDTO).map(UserInfoDTO::getToken).orElse(null);
+//    }
 
     /**
      * 清理用户上下文

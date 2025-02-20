@@ -33,6 +33,6 @@ public class UserInfoDTO {
     /**
      * token
      */
-    private String token;
+//    private String token;
 
 }

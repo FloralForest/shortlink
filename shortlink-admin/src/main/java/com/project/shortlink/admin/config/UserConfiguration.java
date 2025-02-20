@@ -20,7 +20,9 @@ public class UserConfiguration {
     @Bean
     public FilterRegistrationBean<UserTransmitFilter> globalUserTransmitFilter(StringRedisTemplate stringRedisTemplate) {
         FilterRegistrationBean<UserTransmitFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(new UserTransmitFilter(stringRedisTemplate));
+        //使用网关形式这里不再需要
+//        registration.setFilter(new UserTransmitFilter(stringRedisTemplate));
+        registration.setFilter(new UserTransmitFilter());
         //拦截路径
         registration.addUrlPatterns("/*");
         //设置过滤器顺序
