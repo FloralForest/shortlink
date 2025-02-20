@@ -2,6 +2,9 @@ server:
   #定义端口
   port: 8001
 spring:
+  #应用名
+  application:
+    name: short-link-project
   datasource:
     # ShardingSphere 对 Driver 自定义，实现分库分表等隐藏逻辑
     driver-class-name: org.apache.shardingsphere.driver.ShardingSphereDriver
@@ -27,11 +30,11 @@ spring:
       host: 127.0.0.1
       port: 6379
   #   password: 123456
-#  #thymeleaf配置
-#  mvc:
-#    view:
-#      prefix: /templates/
-#      suffix: .html
+  #  #thymeleaf配置
+  #  mvc:
+  #    view:
+  #      prefix: /templates/
+  #      suffix: .html
   mvc:
     view:
       prefix: classpath:/templates/
@@ -39,6 +42,11 @@ spring:
   web:
     resources:
       static-locations: classpath:/static/
+  #微服务spring-cloud-nacos配置
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
 #链接相关配置
 short-link:
   #配置默认域名
@@ -60,12 +68,15 @@ short-link:
 #消息队列配置
 rocketmq:
   name-server: 127.0.0.1:9876
+  #生产者
   producer:
     group: short-link_project-service_stats-save_pg
     topic: short-link_project-service_topic
+    #全局超时时间
     send-message-timeout: 2000
     retry-times-when-send-failed: 1
     retry-times-when-send-async-failed: 1
+  #消费者
   consumer:
     group: short-link_project-service_stats-save_cg
 #mybatis日志

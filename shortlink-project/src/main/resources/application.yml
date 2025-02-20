@@ -2,6 +2,9 @@ server:
   #定义端口
   port: 8001
 spring:
+  #应用名
+  application:
+    name: short-link-project
   datasource:
     # ShardingSphere 对 Driver 自定义，实现分库分表等隐藏逻辑
     driver-class-name: org.apache.shardingsphere.driver.ShardingSphereDriver
@@ -39,6 +42,11 @@ spring:
   web:
     resources:
       static-locations: classpath:/static/
+  #微服务spring-cloud-nacos配置
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
 #链接相关配置
 short-link:
   #配置默认域名

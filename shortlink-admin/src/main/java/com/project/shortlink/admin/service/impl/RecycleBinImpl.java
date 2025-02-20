@@ -2,14 +2,14 @@ package com.project.shortlink.admin.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.project.shortlink.admin.common.biz.user.UserContext;
 import com.project.shortlink.admin.common.convention.exception.ServiceException;
 import com.project.shortlink.admin.common.convention.result.Result;
 import com.project.shortlink.admin.dao.entity.TGroup;
 import com.project.shortlink.admin.dao.mapper.TGroupMapper;
+import com.project.shortlink.admin.remote.LinkActuaRemoteService;
 import com.project.shortlink.admin.remote.LinkRemoteService;
-import com.project.shortlink.admin.remote.dto.req.LinkPageDTO;
 import com.project.shortlink.admin.remote.dto.req.LinkRecycleBinPageDTO;
 import com.project.shortlink.admin.remote.dto.resp.LinkPageRespDTO;
 import com.project.shortlink.admin.service.RecycleBinService;
@@ -26,10 +26,13 @@ import java.util.List;
 public class RecycleBinImpl implements RecycleBinService {
     //@Resource JDK17后推荐使用final修饰加RequiredArgsConstructor构造器注入
     private final TGroupMapper tGroupMapper;
+    //SpringCloud调用
+    private final LinkActuaRemoteService linkActuaRemoteService;
+    //传统调用
     final LinkRemoteService linkRemoteService = new LinkRemoteService(){};
 
     @Override
-    public Result<IPage<LinkPageRespDTO>> pageRecycleLink(LinkRecycleBinPageDTO linkPageDTO) {
+    public Result<Page<LinkPageRespDTO>> pageRecycleLink(LinkRecycleBinPageDTO linkPageDTO) {
         final LambdaQueryWrapper<TGroup> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper
                 .eq(TGroup::getUsername, UserContext.getUsername())
@@ -40,6 +43,9 @@ public class RecycleBinImpl implements RecycleBinService {
         }
         //转换
         linkPageDTO.setGidList(tGroups.stream().map(TGroup::getGid).toList());
-        return linkRemoteService.pageRecycleLink(linkPageDTO);
+        return linkActuaRemoteService.pageRecycleLink(
+                linkPageDTO.getGidList(),
+                linkPageDTO.getCurrent(),
+                linkPageDTO.getSize());
     }
 }

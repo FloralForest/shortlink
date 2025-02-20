@@ -129,6 +129,12 @@
             <groupId>org.apache.rocketmq</groupId>
             <artifactId>rocketmq-spring-boot-starter</artifactId>
         </dependency>
+
+        <!--Spring Cloud Nacos微服务被调用者依赖(调用者需要引入openfeign例如admin的pmo.xml中)-->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        </dependency>
     </dependencies>
     <!--打包时会把可直接启动的jar包一起打包-->
     <build>

@@ -12,6 +12,7 @@ import com.project.shortlink.admin.dto.req.GroupSortDTO;
 import com.project.shortlink.admin.dto.req.GroupUpdateDTO;
 import com.project.shortlink.admin.dto.resp.GroupRespDTO;
 import com.project.shortlink.admin.dto.resp.LinkCountRespDTO;
+import com.project.shortlink.admin.remote.LinkActuaRemoteService;
 import com.project.shortlink.admin.remote.LinkRemoteService;
 import com.project.shortlink.admin.service.TGroupService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -37,7 +38,9 @@ import static com.project.shortlink.admin.common.constant.RedisCacheConstant.LOC
 @Service
 @RequiredArgsConstructor//配合Lombok的构造器注入
 public class TGroupServiceImpl extends ServiceImpl<TGroupMapper, TGroup> implements TGroupService {
-
+    //SpringCloud调用
+    private final LinkActuaRemoteService linkActuaRemoteService;
+    //传统调用
     final LinkRemoteService linkRemoteService = new LinkRemoteService(){};
     private final RedissonClient redissonClient;
     @Value("${short-link.group.max}")
@@ -105,7 +108,7 @@ public class TGroupServiceImpl extends ServiceImpl<TGroupMapper, TGroup> impleme
         final List<TGroup> groupList = baseMapper.selectList(lambdaQueryWrapper);
         //获取分组下的短链接个数
         final Result<List<LinkCountRespDTO>> listResult =
-                linkRemoteService.listLinkCount(groupList.stream().map(TGroup::getGid).toList());
+                linkActuaRemoteService.listLinkCount(groupList.stream().map(TGroup::getGid).toList());
         //将查询到的list拷贝到GroupRespDTO对象
         final List<GroupRespDTO> copyToList = BeanUtil.copyToList(groupList, GroupRespDTO.class);
         copyToList.forEach(each ->{
