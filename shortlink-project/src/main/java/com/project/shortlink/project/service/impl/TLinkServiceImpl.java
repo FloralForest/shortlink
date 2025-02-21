@@ -456,11 +456,12 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
             stringRedisTemplate.delete(String.format(GOTO_SHORT_LINK_KEY, linkUpdateDTO.getFullShortUrl()));
             //若把已过期的短链接又恢复为可用，需要把缓存里的”黑名单“删除。 =把LocalDateTime转成Date再比较确实麻烦=
             //如数据库中的短链接有有效期并且在当前时间之前说明过期，已进入缓存黑名单
+            final Date date = new Date();
             if (selectOne.getValidDate() != null
-                    && Date.from(selectOne.getValidDate().atZone(ZoneId.systemDefault()).toInstant()).before(new Date())) {
+                    && Date.from(selectOne.getValidDate().atZone(ZoneId.systemDefault()).toInstant()).before(date)) {
                 //若当前传过来的修改的时间满足可用条件(无有效期或大于当前时间)，则删除缓存的”黑名单“
                 if (Objects.equals(linkUpdateDTO.getValidDateType(), VailDateTypeEnum.PERMANENT.getType())
-                        || Date.from(linkUpdateDTO.getValidDate().atZone(ZoneId.systemDefault()).toInstant()).after(new Date())) {
+                        || Date.from(linkUpdateDTO.getValidDate().atZone(ZoneId.systemDefault()).toInstant()).after(date)) {
                     stringRedisTemplate.delete(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, linkUpdateDTO.getFullShortUrl()));
                 }
             }
@@ -623,6 +624,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 .browser(browser)
                 .device(device)
                 .network(network)
+                .currentDate(new Date())
                 .build();
     }
 

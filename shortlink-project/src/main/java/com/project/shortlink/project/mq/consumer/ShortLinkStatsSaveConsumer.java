@@ -118,10 +118,11 @@ public class ShortLinkStatsSaveConsumer implements RocketMQListener<Map<String, 
                 wrapper.eq(TLinkGoto::getFullShortUrl, fullShortUrl);
                 gid = tLinkGotoMapper.selectOne(wrapper).getGid();
             }
+            final Date currentDate = statsRecord.getCurrentDate();
             //获取当前时间为星期几，使用getIso8601Value更直观
-            final int week = DateUtil.dayOfWeekEnum(new Date()).getIso8601Value();
+            final int week = DateUtil.dayOfWeekEnum(currentDate).getIso8601Value();
             //获取当前时间的小时部分
-            final int hour = DateUtil.hour(new Date(), true);
+            final int hour = DateUtil.hour(currentDate, true);
             final TLinkAccessStats stats = TLinkAccessStats
                     .builder()
                     .pv(1)
@@ -131,7 +132,7 @@ public class ShortLinkStatsSaveConsumer implements RocketMQListener<Map<String, 
                     .weekday(week)
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
-                    .date(new Date())
+                    .date(currentDate)
                     .build();
             tLinkAccessStatsMapper.shortLinkStats(stats);
             //短链接访问地区统计
@@ -151,7 +152,7 @@ public class ShortLinkStatsSaveConsumer implements RocketMQListener<Map<String, 
                         .builder()
                         .fullShortUrl(fullShortUrl)
                         .gid(gid)
-                        .date(new Date())
+                        .date(currentDate)
                         .province(actualProvince = blank ? actualProvince : localeObject.getString("province"))
                         .city(actualCity = blank ? actualCity : localeObject.getString("city"))
                         .adcode(blank ? "未知" : localeObject.getString("adcode"))
@@ -165,7 +166,7 @@ public class ShortLinkStatsSaveConsumer implements RocketMQListener<Map<String, 
                     .builder()
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
-                    .date(new Date())
+                    .date(currentDate)
                     .cnt(1)
                     .os(statsRecord.getOs())
                     .build();
@@ -175,7 +176,7 @@ public class ShortLinkStatsSaveConsumer implements RocketMQListener<Map<String, 
                     .builder()
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
-                    .date(new Date())
+                    .date(currentDate)
                     .cnt(1)
                     .browser(statsRecord.getBrowser())
                     .build();
@@ -185,7 +186,7 @@ public class ShortLinkStatsSaveConsumer implements RocketMQListener<Map<String, 
                     .builder()
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
-                    .date(new Date())
+                    .date(currentDate)
                     .cnt(1)
                     .device(statsRecord.getDevice())
                     .build();
@@ -195,7 +196,7 @@ public class ShortLinkStatsSaveConsumer implements RocketMQListener<Map<String, 
                     .builder()
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
-                    .date(new Date())
+                    .date(currentDate)
                     .cnt(1)
                     .network(statsRecord.getNetwork())
                     .build();
@@ -221,7 +222,7 @@ public class ShortLinkStatsSaveConsumer implements RocketMQListener<Map<String, 
                     .builder()
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
-                    .date(new Date())
+                    .date(currentDate)
                     .todayPv(1)
                     .todayUv(statsRecord.getUvFirstFlag() ? 1 : 0)
                     .todayUip(statsRecord.getUipFirstFlag() ? 1 : 0)
