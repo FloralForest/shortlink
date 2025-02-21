@@ -102,19 +102,24 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser> implements
 
         //redis 分布式锁 预防大量恶意请求注册用户 （该场景为多用户同时注册同一个用户名）
         RLock lock = redissonClient.getLock(LOCK_USER_REGISTER_KEY + userRegisterDTO.getUsername());
-        try {
-            //注册时一个用户名只由一个用户操作
-            if (lock.tryLock()) {
-                // 插入数据库（依赖唯一索引）
-                baseMapper.insert(BeanUtil.toBean(userRegisterDTO, TUser.class));
-                // 更新布隆过滤器
-                userRegisterCachePenetrationBloomFilter.add(userRegisterDTO.getUsername());
-                //创建用户后默认添加短链接分组
-                tGroupService.saveGroup("新建分组", userRegisterDTO.getUsername());
-            }
-        } catch (DuplicateKeyException e) {
+        //注册时一个用户名只由一个用户操作
+        if (lock.tryLock()) {
             // 捕获唯一键冲突异常（兜底）
             throw new ClientException(USER_SAVE_NAME_ERROR);
+        }
+        try {
+            // 插入数据库（依赖唯一索引）
+            int insert = baseMapper.insert(BeanUtil.toBean(userRegisterDTO, TUser.class));
+            if(insert < 1){
+                throw new ClientException(USER_SAVE_ERROR);
+            }
+            // 更新布隆过滤器
+            userRegisterCachePenetrationBloomFilter.add(userRegisterDTO.getUsername());
+            //创建用户后默认添加短链接分组
+            tGroupService.saveGroup("新建分组", userRegisterDTO.getUsername());
+        } catch (DuplicateKeyException e) {
+            // 捕获唯一键冲突异常（兜底）
+            throw new ClientException(USER_EXIST);
         } finally {
             //操作完成后释放锁
             lock.unlock();
