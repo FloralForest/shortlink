@@ -487,7 +487,9 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         //使用字符串工具类判空
         if (StrUtil.isNotBlank(originalLink)) {
             LinkStatsRecordDTO statsRecord = buildLinkStatsRecordAndSetUser(fullShortUrl, request, response);
+            //发送到MQ消息队列
             this.shortLinkStats(fullShortUrl, null, statsRecord);
+            //跳转（重定向）
             ((HttpServletResponse) response).sendRedirect(originalLink);
             return;
         }
@@ -509,9 +511,11 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
         try {
             //第一个线程拿到数据存入缓存后，后面就不必继续往下执行
             originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
-            if (StrUtil.isBlank(originalLink)) {
+            if (StrUtil.isNotBlank(originalLink)) {
                 LinkStatsRecordDTO statsRecord = buildLinkStatsRecordAndSetUser(fullShortUrl, request, response);
+                //发送到MQ消息队列
                 this.shortLinkStats(fullShortUrl, null, statsRecord);
+                //跳转（重定向）
                 ((HttpServletResponse) response).sendRedirect(originalLink);
                 return;
             }
@@ -557,9 +561,10 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                     String.format(GOTO_SHORT_LINK_KEY, fullShortUrl),
                     tLink.getOriginUrl(),
                     LinkUtil.getLinkCacheValidTime(tLink.getValidDate()), TimeUnit.MILLISECONDS);
-            //跳转（重定向）
             LinkStatsRecordDTO statsRecord = buildLinkStatsRecordAndSetUser(fullShortUrl, request, response);
+            //发送到MQ消息队列
             this.shortLinkStats(fullShortUrl, tLink.getGid(), statsRecord);
+            //跳转（重定向）
             ((HttpServletResponse) response).sendRedirect(tLink.getOriginUrl());
         } finally {
             lock.unlock();
