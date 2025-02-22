@@ -24,17 +24,13 @@ public class RecycleBinController {
     //@RequestBody 将 HTTP 请求体（如 JSON、XML）中的数据转换为 Java 对象。
     public Result<Void> saveRecycleBin(@RequestBody RecycleBinSaveDTO recycleBinSaveDTO){
         recycleBinService.saveRecycleBin(recycleBinSaveDTO);
-        return Results.success()
-                .setCode("20000")
-                .setMessage("已置入回收站");
+        return Results.success();
     }
 
     //回收站分页
     @GetMapping("link/recycle/page")
     public Result<IPage<LinkPageRespDTO>> pageLink(LinkRecycleBinPageDTO linkPageDTO) {
-        return Results.success(recycleBinService.pageLink(linkPageDTO))
-                .setCode("20000")
-                .setMessage("查询成功");
+        return Results.success(recycleBinService.pageLink(linkPageDTO));
     }
 
     //回收站恢复
@@ -42,9 +38,7 @@ public class RecycleBinController {
     //@RequestBody 将 HTTP 请求体（如 JSON、XML）中的数据转换为 Java 对象。
     public Result<Void> recoverLink(@RequestBody RecycleBinRecoverDTO recycleBinRecoverDTO) {
         recycleBinService.recoverLink(recycleBinRecoverDTO);
-        return Results.success()
-                .setCode("20000")
-                .setMessage("已移出回收站");
+        return Results.success();
     }
 
     //删除回收站
@@ -52,9 +46,7 @@ public class RecycleBinController {
     //@RequestBody 将 HTTP 请求体（如 JSON、XML）中的数据转换为 Java 对象。
     public Result<Void> removeLink(@RequestBody RecycleBinRemoveDTO recycleBinRemoveDTO) {
         recycleBinService.removeLink(recycleBinRemoveDTO);
-        return Results.success()
-                .setCode("20000")
-                .setMessage("已从回收站删除");
+        return Results.success();
     }
 }
 

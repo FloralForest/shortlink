@@ -14,6 +14,7 @@ import com.project.shortlink.admin.remote.dto.resp.LinkStatsAccessRecordRespDTO;
 import com.project.shortlink.admin.remote.dto.resp.LinkStatsRespDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -26,12 +27,13 @@ public class LinkStatsController {
     private final LinkActuaRemoteService linkActuaRemoteService;
 
     //传统调用
-    final LinkRemoteService linkRemoteService = new LinkRemoteService(){};
+    final LinkRemoteService linkRemoteService = new LinkRemoteService() {
+    };
 
 
     //短链接监控所有数据
     @GetMapping("/api/shortlink/admin/stats")
-    public Result<LinkStatsRespDTO> linkStats(LinkStatsDTO linkStatsDTO){
+    public Result<LinkStatsRespDTO> linkStats(LinkStatsDTO linkStatsDTO) {
         return linkActuaRemoteService.oneLinkStats(
                 linkStatsDTO.getGid(),
                 linkStatsDTO.getFullShortUrl(),
@@ -41,12 +43,14 @@ public class LinkStatsController {
 
     //短链接监控访问记录(日志) + 分页
     @GetMapping("/api/shortlink/admin/stats/lar")
-    public Result<Page<LinkStatsAccessRecordRespDTO>> linkAccessRecord(LinkStatsAccessRecordDTO linkStatsDTO){
+    public Result<Page<LinkStatsAccessRecordRespDTO>> linkAccessRecord(LinkStatsAccessRecordDTO linkStatsDTO) {
         return linkActuaRemoteService.linkStatsAccessRecord(
                 linkStatsDTO.getGid(),
                 linkStatsDTO.getFullShortUrl(),
                 linkStatsDTO.getStartDate(),
-                linkStatsDTO.getEndDate());
+                linkStatsDTO.getEndDate(),
+                linkStatsDTO.getCurrent(),
+                linkStatsDTO.getSize());
     }
 
     ////分数监控相关数据
@@ -61,10 +65,12 @@ public class LinkStatsController {
 
     //访问分组短链接监控访问记录(日志) + 分页
     @GetMapping("/api/shortlink/admin/stats/group/lar")
-    public Result<Page<LinkStatsAccessRecordRespDTO>> groupLinkAccessRecord(LinkGroupStatsAccessRecordDTO linkStatsDTO){
+    public Result<Page<LinkStatsAccessRecordRespDTO>> groupLinkAccessRecord(LinkGroupStatsAccessRecordDTO linkStatsDTO) {
         return linkActuaRemoteService.groupLinkStatsAccessRecord(
                 linkStatsDTO.getGid(),
                 linkStatsDTO.getStartDate(),
-                linkStatsDTO.getEndDate());
+                linkStatsDTO.getEndDate(),
+                linkStatsDTO.getCurrent(),
+                linkStatsDTO.getSize());
     }
 }

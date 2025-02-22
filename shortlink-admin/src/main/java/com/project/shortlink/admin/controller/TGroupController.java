@@ -33,17 +33,13 @@ public class TGroupController {
     //@RequestBody 将 HTTP 请求体（如 JSON、XML）中的数据转换为 Java 对象。
     public Result<Void> saveGroup(@RequestBody GroupSaveDTO groupSaveDTO){
         tGroupService.saveGroup(groupSaveDTO.getName());
-        return Results.success()
-                .setCode("20000")
-                .setMessage("添加分组成功");
+        return Results.success();
     }
 
     //查询分组
     @GetMapping("group/findAll")
     public Result<List<GroupRespDTO>> listGroup(){
-        return Results.success(tGroupService.listGroup())
-                .setCode("20000")
-                .setMessage("分组已置入");
+        return Results.success(tGroupService.listGroup());
     }
 
     //修改组名
@@ -51,9 +47,7 @@ public class TGroupController {
     //@RequestBody 将 HTTP 请求体（如 JSON、XML）中的数据转换为 Java 对象。
     public Result<Void> updateGroup(@RequestBody GroupUpdateDTO groupUpdateDTO){
         tGroupService.updateGroup(groupUpdateDTO);
-        return Results.success()
-                .setCode("20000")
-                .setMessage("修改成功");
+        return Results.success();
     }
 
     //删除组
@@ -61,9 +55,7 @@ public class TGroupController {
     //@RequestParam 从URL的查询字符串（如 ?name=John&age=20）或 POST 表单数据中获取参数值。
     public Result<Void> deleteGroup(@RequestParam String gid){
         tGroupService.deleteGroup(gid);
-        return Results.success()
-                .setCode("20000")
-                .setMessage("删除成功");
+        return Results.success();
     }
 
     //组排序(前端做排序，这里本质上还是修改sortOrder的值)
@@ -71,8 +63,6 @@ public class TGroupController {
     //@RequestBody 将 HTTP 请求体（如 JSON、XML）中的数据转换为 Java 对象。
     public Result<Void> sortGroup(@RequestBody List<GroupSortDTO> groupSortDTOList){
         tGroupService.sortGroup(groupSortDTOList);
-        return Results.success()
-                .setCode("20000")
-                .setMessage("排序成功");
+        return Results.success();
     }
 }

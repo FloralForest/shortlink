@@ -29,6 +29,6 @@ public class UrlTitleServiceImpl implements UrlTitleService {
             Document document = Jsoup.connect(url).get();
             return document.title();
         }
-        return "获取原链接标题失败";
+        return "获取原链接标题失败！请手动添加";
     }
 }

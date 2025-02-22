@@ -49,9 +49,7 @@ public class TLinkController {
     )
     //@RequestBody 将 HTTP 请求体（如 JSON、XML）中的数据转换为 Java 对象。
     public Result<LinkCreateRespDTO> createLink(@RequestBody LinkCreateDTO linkCreateDTO) {
-        return Results.success(tLinkService.createLink(linkCreateDTO))
-                .setCode("20000")
-                .setMessage("短链接创建成功");
+        return Results.success(tLinkService.createLink(linkCreateDTO));
     }
     //批量创建短链接
     @PostMapping("/api/shortlink/project/link/createLink/batch")
@@ -63,18 +61,14 @@ public class TLinkController {
     //分页
     @GetMapping("/api/shortlink/project/link/page")
     public Result<IPage<LinkPageRespDTO>> pageLink(LinkPageDTO linkPageDTO) {
-        return Results.success(tLinkService.pageLink(linkPageDTO))
-                .setCode("20000")
-                .setMessage("查询成功");
+        return Results.success(tLinkService.pageLink(linkPageDTO));
     }
 
     //分组内的短链接数量
     @GetMapping("/api/shortlink/project/link/count")
     //@RequestParam 从URL的查询字符串（如 ?name=John&age=20）或 POST 表单数据中获取参数值。
-    public Result<List<LinkCountRespDTO>> listLinkCount(@RequestParam("number") List<String> gidNumber) {
-        return Results.success(tLinkService.listLinkCount(gidNumber))
-                .setCode("20000")
-                .setMessage("查询成功");
+    public Result<List<LinkCountRespDTO>> listLinkCount(@RequestParam("gidNumber") List<String> gidNumber) {
+        return Results.success(tLinkService.listLinkCount(gidNumber));
     }
 
     //短链接修改
@@ -82,9 +76,7 @@ public class TLinkController {
     //@RequestBody 将 HTTP 请求体（如 JSON、XML）中的数据转换为 Java 对象。
     public Result<Void> linkUpdate(@RequestBody LinkUpdateDTO linkUpdateDTO) {
         tLinkService.linkUpdate(linkUpdateDTO);
-        return Results.success()
-                .setCode("20000")
-                .setMessage("修改成功");
+        return Results.success();
     }
 
     //实现短链接跳转(重定向到原链接)

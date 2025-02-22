@@ -64,8 +64,6 @@ public class LinkController {
     //@RequestBody 将 HTTP 请求体（如 JSON、XML）中的数据转换为 Java 对象。
     public Result<Void> linkUpdate(@RequestBody LinkUpdateDTO linkUpdateDTO) {
         linkActuaRemoteService.linkUpdate(linkUpdateDTO);
-        return Results.success()
-                .setCode("20000")
-                .setMessage("修改成功");
+        return Results.success();
     }
 }

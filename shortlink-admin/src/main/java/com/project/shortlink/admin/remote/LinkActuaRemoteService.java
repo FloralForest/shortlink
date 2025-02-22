@@ -84,7 +84,9 @@ public interface LinkActuaRemoteService {
             @RequestParam("gid") String gid,
             @RequestParam("fullShortUrl") String fullShortUrl,
             @RequestParam("startDate") String startDate,
-            @RequestParam("endDate") String endDate);
+            @RequestParam("endDate") String endDate,
+            @RequestParam("current") Long current,
+            @RequestParam("size") Long size);
 
     //访问分组短链接指定时间内监控数据
     @GetMapping("/api/shortlink/project/stats/group")
@@ -99,6 +101,7 @@ public interface LinkActuaRemoteService {
     Result<Page<LinkStatsAccessRecordRespDTO>> groupLinkStatsAccessRecord(
             @RequestParam("gid") String gid,
             @RequestParam("startDate") String startDate,
-            @RequestParam("endDate") String endDate
-    );
+            @RequestParam("endDate") String endDate,
+            @RequestParam("current") Long current,
+            @RequestParam("size") Long size);
 }

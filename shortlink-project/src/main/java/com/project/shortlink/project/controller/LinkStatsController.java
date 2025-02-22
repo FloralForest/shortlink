@@ -25,17 +25,13 @@ public class LinkStatsController {
     //单个短链接监控的所有数据
     @GetMapping("/api/shortlink/project/stats")
     public Result<LinkStatsRespDTO> linkStats(LinkStatsDTO linkStatsDTO){
-        return Results.success(linkStatsService.oneLinkStats(linkStatsDTO))
-                .setCode("20000")
-                .setMessage("查询成功");
+        return Results.success(linkStatsService.oneLinkStats(linkStatsDTO));
     }
 
     //短链接监控访问记录(日志) + 分页
     @GetMapping("/api/shortlink/project/stats/lar")
     public Result<IPage<LinkStatsAccessRecordRespDTO>> linkAccessRecord(LinkStatsAccessRecordDTO linkStatsDTO){
-        return Results.success(linkStatsService.linkStatsAccessRecord(linkStatsDTO))
-                .setCode("20000")
-                .setMessage("查询成功");
+        return Results.success(linkStatsService.linkStatsAccessRecord(linkStatsDTO));
     }
 
     //分数监控相关数据
@@ -48,8 +44,6 @@ public class LinkStatsController {
     //访问分组短链接监控访问记录(日志) + 分页
     @GetMapping("/api/shortlink/project/stats/group/lar")
     public Result<IPage<LinkStatsAccessRecordRespDTO>> groupLinkAccessRecord(LinkGroupStatsAccessRecordDTO linkStatsDTO){
-        return Results.success(linkStatsService.groupLinkAccessRecord(linkStatsDTO))
-                .setCode("20000")
-                .setMessage("查询成功");
+        return Results.success(linkStatsService.groupLinkAccessRecord(linkStatsDTO));
     }
 }

@@ -370,7 +370,7 @@ public class TLinkServiceImpl extends ServiceImpl<TLinkMapper, TLink> implements
                 LambdaQueryWrapper<TLinkGoto> linkGotoQueryWrapper = new LambdaQueryWrapper<>();
                 linkGotoQueryWrapper
                         .eq(TLinkGoto::getFullShortUrl, linkUpdateDTO.getFullShortUrl())
-                        .eq(TLinkGoto::getGid, linkUpdateDTO.getGid());
+                        .eq(TLinkGoto::getGid, linkUpdateDTO.getOriginGid());
                 TLinkGoto shortLinkGotoDO = tLinkGotoMapper.selectOne(linkGotoQueryWrapper);
                 tLinkGotoMapper.deleteById(shortLinkGotoDO.getId());
                 shortLinkGotoDO.setGid(linkUpdateDTO.getGid());
